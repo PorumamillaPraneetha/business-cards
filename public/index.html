@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Card Scanner</title>
+  <style>
+    /* ── Reset ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:      #007AFF;
+      --green:     #34C759;
+      --red:       #FF3B30;
+      --orange:    #FF9500;
+      --purple:    #AF52DE;
+      --teal:      #5AC8FA;
+      --indigo:    #32ADE6;
+      --bg:        #F2F2F7;
+      --surface:   #FFFFFF;
+      --surface2:  #F2F2F7;
+      --text:      #000000;
+      --text2:     #3C3C43;
+      --secondary: #6C6C70;
+      --border:    #E5E5EA;
+      --fill:      #F2F2F7;
+      --tab-h:     56px;
+      --header-h:  54px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #000000;
+        --surface: #1C1C1E;
+        --surface2:#2C2C2E;
+        --text:    #FFFFFF;
+        --text2:   #EBEBF5;
+        --secondary:#8E8E93;
+        --border:  #3A3A3C;
+        --fill:    #2C2C2E;
+      }
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      /* space below content for tab bar + device safe area + 20px breathing room */
+      padding-bottom: calc(env(safe-area-inset-bottom) + var(--tab-h) + 20px);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Tab pages ──────────────────────────────────────── */
+    .tab-page { display: none; }
+    .tab-page.active { display: block; }
+
+    /* ── Shared header ──────────────────────────────────── */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: calc(var(--header-h) + env(safe-area-inset-top));
+      padding-top: env(safe-area-inset-top);
+      display: flex;
+      align-items: center;
+      padding-left: 16px;
+      padding-right: 16px;
+      gap: 10px;
+    }
+
+    .top-bar-icon {
+      width: 28px; height: 28px;
+      background: var(--blue);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .top-bar-icon svg { width: 15px; height: 15px; color: #fff; }
+
+    .top-bar h1 {
+      font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+      flex: 1;
+    }
+
+    .top-bar-action {
+      background: none; border: none; padding: 6px 10px;
+      color: var(--blue); font-size: 15px; font-weight: 600;
+      cursor: pointer; border-radius: 8px;
+      display: flex; align-items: center; gap: 5px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .top-bar-action:active { opacity: 0.6; }
+    .top-bar-action svg { width: 16px; height: 16px; }
+
+    /* ── Content wrapper ────────────────────────────────── */
+    .page-content {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 20px 16px 28px;
+    }
+
+    /* ── Card shell ─────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: 18px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    @media (prefers-color-scheme: dark) {
+      .card { box-shadow: 0 2px 20px rgba(0,0,0,0.4); }
+    }
+
+    /* ── Buttons ────────────────────────────────────────── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; min-height: 50px; padding: 13px 20px;
+      border-radius: 13px; border: none; font-family: inherit;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      letter-spacing: -0.2px;
+      transition: opacity .12s, transform .1s;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+    }
+    .btn:active { opacity: .75; transform: scale(.97); }
+    .btn svg { width: 19px; height: 19px; flex-shrink: 0; }
+    .btn-primary   { background: var(--blue);  color: #fff; }
+    .btn-secondary { background: var(--fill);  color: var(--blue); }
+    .btn-success   { background: var(--green); color: #fff; }
+    .btn-outline {
+      background: transparent; color: var(--secondary);
+      border: 1.5px solid var(--border);
+    }
+    .btn-sm {
+      min-height: 38px; padding: 8px 16px;
+      font-size: 14px; border-radius: 10px;
+    }
+
+    /* ── Hidden inputs ──────────────────────────────────── */
+    #camera-input, #gallery-input { display: none; }
+
+    /* ── Webcam overlay (desktop) ───────────────────────── */
+    .webcam-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: stretch; justify-content: stretch;
+    }
+
+    .webcam-header {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: max(16px, env(safe-area-inset-top)) 18px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 10;
+      background: linear-gradient(to bottom, rgba(0,0,0,.55) 0%, transparent 100%);
+    }
+
+    .webcam-title { color: #fff; font-size: 16px; font-weight: 700; }
+
+    .webcam-cancel {
+      background: rgba(255,255,255,.18); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: none; border-radius: 20px;
+      color: #fff; font-size: 15px; font-weight: 600;
+      padding: 6px 16px; cursor: pointer; font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .webcam-cancel:active { opacity: .7; }
+
+    #webcam-video {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+      transform: scaleX(1); /* mirror for front cam is handled in JS */
+    }
+
+    .webcam-guide-layer {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+      gap: 10px;
+    }
+
+    /* Card-shaped guide frame */
+    .webcam-guide {
+      width: min(82vw, 440px);
+      aspect-ratio: 1.75 / 1;
+      border-radius: 10px;
+      border: 2.5px solid rgba(255,255,255,.85);
+      /* dark vignette outside the guide */
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.48);
+    }
+
+    .webcam-hint {
+      color: rgba(255,255,255,.8);
+      font-size: 13px; font-weight: 500;
+      text-shadow: 0 1px 4px rgba(0,0,0,.6);
+      letter-spacing: .1px;
+    }
+
+    .webcam-footer {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 20px 40px max(28px, env(safe-area-inset-bottom));
+      display: flex; align-items: center; justify-content: center;
+      gap: 40px;
+      background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);
+    }
+
+    .shutter-btn {
+      width: 70px; height: 70px; border-radius: 50%;
+      background: #fff; border: none; cursor: pointer;
+      box-shadow: 0 0 0 5px rgba(255,255,255,.3);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .12s, box-shadow .12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .shutter-btn:active { transform: scale(.88); box-shadow: 0 0 0 3px rgba(255,255,255,.2); }
+    .shutter-inner {
+      width: 58px; height: 58px; border-radius: 50%;
+      background: #fff; border: 3px solid rgba(0,0,0,.1);
+    }
+
+    .webcam-flip-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,.18); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: none; cursor: pointer; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .webcam-flip-btn:active { opacity: .6; }
+    .webcam-flip-btn svg { width: 22px; height: 22px; }
+
+    /* ════════════════════════════════════════════════════
+       SCAN TAB
+    ════════════════════════════════════════════════════ */
+
+    /* Hero scan area */
+    .scan-hero {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 40px 28px 34px; gap: 12px; text-align: center;
+    }
+
+    .hero-blob {
+      width: 86px; height: 86px;
+      background: linear-gradient(145deg, #0A84FF, #007AFF);
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,122,255,.35);
+      margin-bottom: 6px;
+    }
+    .hero-blob svg { width: 42px; height: 42px; color: #fff; }
+
+    .scan-title { font-size: 23px; font-weight: 800; letter-spacing: -.5px; }
+    .scan-sub   { font-size: 15px; color: var(--secondary); line-height: 1.5; max-width: 290px; }
+
+    .scan-btns {
+      display: flex; flex-direction: column; gap: 11px;
+      width: 100%; margin-top: 10px;
+    }
+
+    .or-row {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--secondary); font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .or-row::before, .or-row::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* Preview */
+    .preview-img {
+      width: 100%; max-height: 210px; object-fit: contain;
+      background: #111; display: block;
+    }
+
+    /* Loading */
+    .loading-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 13px; padding: 38px 24px;
+    }
+    .spinner {
+      width: 46px; height: 46px;
+      border: 3px solid var(--border); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-label { font-size: 15px; color: var(--secondary); font-weight: 500; }
+
+    /* Form */
+    .form-group { padding: 0 16px 14px; }
+    .form-group:first-child { padding-top: 18px; }
+    .group-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .7px; color: var(--secondary); padding: 0 4px 7px;
+    }
+    .field-list {
+      border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; background: var(--surface);
+    }
+    .field-row {
+      display: flex; align-items: center; padding: 10px 13px;
+      gap: 11px; border-bottom: 1px solid var(--border);
+    }
+    .field-row:last-child { border-bottom: none; }
+    .f-badge {
+      width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .f-badge svg { width: 14px; height: 14px; color: #fff; }
+    .b-blue   { background: var(--blue);   }
+    .b-green  { background: var(--green);  }
+    .b-orange { background: var(--orange); }
+    .b-purple { background: var(--purple); }
+    .b-teal   { background: var(--teal);   }
+    .b-red    { background: var(--red);    }
+    .b-indigo { background: var(--indigo); }
+    .f-inner { flex: 1; min-width: 0; }
+    .f-label {
+      font-size: 10px; font-weight: 600; color: var(--secondary);
+      text-transform: uppercase; letter-spacing: .4px; margin-bottom: 1px;
+    }
+    .f-input {
+      background: transparent; border: none; outline: none;
+      font-family: inherit; font-size: 15px; color: var(--text);
+      width: 100%; padding: 0; min-height: 21px;
+    }
+    .f-input::placeholder { color: var(--secondary); opacity: .55; }
+
+    .form-actions { display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 32px; }
+
+    /* Saving state */
+    .btn-saving { opacity: .7; pointer-events: none; }
+
+    /* Success */
+    .success-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 46px 26px 48px; gap: 14px;
+    }
+    .success-ring {
+      width: 76px; height: 76px; border-radius: 50%;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 20px rgba(52,199,89,.4);
+      animation: pop .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-ring svg { width: 36px; height: 36px; color: #fff; }
+    .success-title { font-size: 21px; font-weight: 800; letter-spacing: -.4px; }
+    .success-body  { font-size: 14px; color: var(--secondary); line-height: 1.55; max-width: 280px; }
+    .sheets-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(52,199,89,.12); color: var(--green);
+      border: 1px solid rgba(52,199,89,.25);
+      border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 600;
+    }
+    .sheets-badge svg { width: 14px; height: 14px; }
+    .sheets-warn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,149,0,.1); color: var(--orange);
+      border: 1px solid rgba(255,149,0,.25);
+      border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 600;
+    }
+
+    /* Error box */
+    .err-box {
+      display: none; background: rgba(255,59,48,.1);
+      border: 1px solid rgba(255,59,48,.3); color: var(--red);
+      border-radius: 12px; padding: 12px 15px;
+      font-size: 14px; line-height: 1.45; margin-top: 13px;
+    }
+    .err-box.show { display: block; }
+
+    /* ════════════════════════════════════════════════════
+       ALL CONTACTS TAB
+    ════════════════════════════════════════════════════ */
+
+    /* Search bar */
+    .search-wrap {
+      position: sticky; top: calc(var(--header-h) + env(safe-area-inset-top));
+      z-index: 30; background: var(--bg);
+      padding: 10px 16px 8px;
+    }
+    .search-box {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 9px 14px;
+    }
+    .search-box svg { width: 16px; height: 16px; color: var(--secondary); flex-shrink: 0; }
+    .search-input {
+      flex: 1; border: none; outline: none; background: transparent;
+      font-family: inherit; font-size: 15px; color: var(--text);
+    }
+    .search-input::placeholder { color: var(--secondary); }
+    .search-clear {
+      background: none; border: none; cursor: pointer; padding: 2px;
+      color: var(--secondary); display: none; line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .search-clear.show { display: block; }
+    .search-clear svg { width: 16px; height: 16px; }
+
+    /* Count badge */
+    .contacts-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px 6px; font-size: 12px; color: var(--secondary);
+    }
+
+    /* Contact cards list */
+    .contacts-list {
+      padding: 0 16px 8px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+
+    .contact-card {
+      display: flex; align-items: center; gap: 13px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      background: var(--surface);
+      -webkit-tap-highlight-color: transparent;
+      transition: background .12s;
+    }
+    .contact-card:first-child { border-radius: 14px 14px 0 0; }
+    .contact-card:last-child  { border-radius: 0 0 14px 14px; border-bottom: none; }
+    .contact-card:only-child  { border-radius: 14px; border-bottom: none; }
+    .contact-card:active { background: var(--fill); }
+
+    /* Avatar initials */
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .card-info { flex: 1; min-width: 0; }
+    .card-name {
+      font-size: 15px; font-weight: 600; letter-spacing: -.2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-company {
+      font-size: 13px; color: var(--secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-meta {
+      font-size: 12px; color: var(--secondary); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .card-chevron { color: var(--secondary); flex-shrink: 0; }
+    .card-chevron svg { width: 14px; height: 14px; }
+
+    /* States */
+    .state-box {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 50px 24px; text-align: center;
+    }
+    .state-icon {
+      width: 60px; height: 60px; border-radius: 16px;
+      background: var(--fill);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .state-icon svg { width: 28px; height: 28px; color: var(--secondary); }
+    .state-title   { font-size: 17px; font-weight: 700; }
+    .state-body    { font-size: 14px; color: var(--secondary); max-width: 260px; line-height: 1.5; }
+
+    /* ════════════════════════════════════════════════════
+       DETAIL MODAL (slide-up sheet)
+    ════════════════════════════════════════════════════ */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 80; opacity: 0; pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .detail-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      max-height: 90dvh;
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      z-index: 90; transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,.72,0,1);
+      overflow-y: auto;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .detail-sheet.open { transform: translateY(0); }
+    @media (min-width: 520px) {
+      .detail-sheet {
+        left: 50%; right: auto; transform: translateX(-50%) translateY(100%);
+        width: 480px; border-radius: 20px;
+        bottom: 20px; max-height: calc(100dvh - 40px);
+      }
+      .detail-sheet.open { transform: translateX(-50%) translateY(0); }
+    }
+
+    .sheet-handle-row {
+      display: flex; justify-content: center; padding: 10px 0 6px;
+    }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 2px; background: var(--border);
+    }
+
+    .sheet-header {
+      display: flex; align-items: center; gap: 13px;
+      padding: 8px 18px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sheet-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .sheet-name-wrap { flex: 1; min-width: 0; }
+    .sheet-fullname {
+      font-size: 19px; font-weight: 700; letter-spacing: -.3px;
+      line-height: 1.25;
+    }
+    .sheet-title-co { font-size: 13px; color: var(--secondary); margin-top: 2px; }
+
+    .sheet-close {
+      background: var(--fill); border: none; cursor: pointer; padding: 0;
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--secondary); flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sheet-close svg { width: 15px; height: 15px; }
+    .sheet-close:active { opacity: .6; }
+
+    .sheet-rows { padding: 0 18px; }
+    .sheet-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 11px 0; border-bottom: 1px solid var(--border);
+    }
+    .sheet-row:last-child { border-bottom: none; }
+    .sheet-row-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .sheet-row-icon svg { width: 14px; height: 14px; color: #fff; }
+    .sheet-row-content { flex: 1; min-width: 0; }
+    .sheet-row-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--secondary); margin-bottom: 1px;
+    }
+    .sheet-row-value { font-size: 15px; word-break: break-word; }
+    .sheet-row-value a { color: var(--blue); text-decoration: none; }
+
+    .sheet-actions { padding: 14px 18px 10px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Bottom tab bar ─────────────────────────────────── */
+    .tab-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: flex-start; padding-top: 6px;
+      z-index: 60;
+      /* Frosted glass on devices that support it */
+      backdrop-filter: blur(12px) saturate(1.8);
+      -webkit-backdrop-filter: blur(12px) saturate(1.8);
+    }
+
+    .tab-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 3px; background: none; border: none; cursor: pointer;
+      padding: 4px 0; color: var(--secondary);
+      font-family: inherit; font-size: 10px; font-weight: 500;
+      letter-spacing: .2px;
+      -webkit-tap-highlight-color: transparent;
+      transition: color .15s;
+    }
+    .tab-btn svg { width: 23px; height: 23px; }
+    .tab-btn.active { color: var(--blue); }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     TAB 1 — SCAN
+════════════════════════════════════════════════════════ -->
+<div id="tab-scan" class="tab-page active">
+
+  <div class="top-bar">
+    <div class="top-bar-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
+      </svg>
+    </div>
+    <h1>Card Scanner</h1>
+  </div>
+
+  <div class="page-content">
+    <div class="card" id="scan-card">
+
+      <!-- HERO ────────────────────── -->
+      <div id="sv-hero" class="scan-hero">
+        <div class="hero-blob">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+          </svg>
+        </div>
+        <h2 class="scan-title">Scan a Business Card</h2>
+        <p class="scan-sub">Point your camera at a card — Claude AI extracts the contact details instantly.</p>
+
+        <div class="scan-btns">
+          <button class="btn btn-primary" onclick="triggerCamera()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+            </svg>
+            Scan Card (Camera)
+          </button>
+          <div class="or-row">or</div>
+          <button class="btn btn-secondary" onclick="triggerGallery()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+            </svg>
+            Choose from Library
+          </button>
+        </div>
+      </div>
+
+      <!-- PREVIEW ─────────────────── -->
+      <div id="sv-preview" style="display:none;">
+        <img id="preview-img" class="preview-img" alt="Card preview">
+        <!-- LOADING -->
+        <div id="sv-loading" class="loading-wrap" style="display:none;">
+          <div class="spinner"></div>
+          <p class="loading-label">Reading card with Claude AI…</p>
+        </div>
+      </div>
+
+      <!-- FORM ────────────────────── -->
+      <div id="sv-form" style="display:none;">
+        <!-- Name -->
+        <div class="form-group" style="padding-top:18px;">
+          <div class="group-label">Name</div>
+          <div class="field-list">
+            <div class="field-row">
+              <div class="f-badge b-blue"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></div>
+              <div class="f-inner"><div class="f-label">First Name</div><input id="f-firstName" type="text" class="f-input" placeholder="First name" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-blue"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></div>
+              <div class="f-inner"><div class="f-label">Last Name</div><input id="f-lastName" type="text" class="f-input" placeholder="Last name" autocorrect="off"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work -->
+        <div class="form-group">
+          <div class="group-label">Work</div>
+          <div class="field-list">
+            <div class="field-row">
+              <div class="f-badge b-purple"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg></div>
+              <div class="f-inner"><div class="f-label">Company</div><input id="f-company" type="text" class="f-input" placeholder="Company name" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-teal"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z"/></svg></div>
+              <div class="f-inner"><div class="f-label">Job Title</div><input id="f-title" type="text" class="f-input" placeholder="Job title" autocorrect="off"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact info -->
+        <div class="form-group">
+          <div class="group-label">Contact</div>
+          <div class="field-list">
+            <div class="field-row">
+              <div class="f-badge b-green"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg></div>
+              <div class="f-inner"><div class="f-label">Phone</div><input id="f-phone" type="tel" class="f-input" placeholder="Phone number"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-orange"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></div>
+              <div class="f-inner"><div class="f-label">Email</div><input id="f-email" type="email" class="f-input" placeholder="Email address" autocapitalize="none"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-indigo"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg></div>
+              <div class="f-inner"><div class="f-label">Website</div><input id="f-website" type="url" class="f-input" placeholder="https://example.com" autocapitalize="none"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Address -->
+        <div class="form-group">
+          <div class="group-label">Address</div>
+          <div class="field-list">
+            <div class="field-row">
+              <div class="f-badge b-red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div>
+              <div class="f-inner"><div class="f-label">Street</div><input id="f-address" type="text" class="f-input" placeholder="Street address" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div>
+              <div class="f-inner"><div class="f-label">City</div><input id="f-city" type="text" class="f-input" placeholder="City" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div>
+              <div class="f-inner"><div class="f-label">State / Province</div><input id="f-state" type="text" class="f-input" placeholder="State" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div>
+              <div class="f-inner"><div class="f-label">ZIP / Postal Code</div><input id="f-zip" type="text" class="f-input" placeholder="ZIP code" autocorrect="off"></div>
+            </div>
+            <div class="field-row">
+              <div class="f-badge b-red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div>
+              <div class="f-inner"><div class="f-label">Country</div><input id="f-country" type="text" class="f-input" placeholder="Country" autocorrect="off"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="save-btn" class="btn btn-success" onclick="saveContact()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
+            Save Contact
+          </button>
+          <button class="btn btn-outline" onclick="resetScan()">↩ Scan Another Card</button>
+        </div>
+      </div>
+
+      <!-- SUCCESS ──────────────────── -->
+      <div id="sv-success" style="display:none;">
+        <div class="success-wrap">
+          <div class="success-ring">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </div>
+          <h2 class="success-title">Contact Saved!</h2>
+          <div id="success-badges" style="display:flex;flex-direction:column;align-items:center;gap:8px;"></div>
+          <p class="success-body" id="success-note">
+            Your <strong>.vcf file has been downloaded</strong>. On iPhone or Android, open the file to add to your Contacts app.
+          </p>
+          <button class="btn btn-primary" onclick="resetScan()" style="margin-top:6px;max-width:260px;">Scan Another Card</button>
+        </div>
+      </div>
+
+    </div><!-- /.card -->
+    <div id="scan-error" class="err-box"></div>
+  </div><!-- /.page-content -->
+</div><!-- /#tab-scan -->
+
+<!-- ════════════════════════════════════════════════════════
+     TAB 2 — ALL CONTACTS
+════════════════════════════════════════════════════════ -->
+<div id="tab-contacts" class="tab-page">
+
+  <div class="top-bar">
+    <div class="top-bar-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
+      </svg>
+    </div>
+    <h1>All Contacts</h1>
+    <button class="top-bar-action" onclick="exportCSV()" id="export-btn" title="Export CSV">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+      </svg>
+      CSV
+    </button>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+      </svg>
+      <input id="search-input" type="search" class="search-input" placeholder="Search name, company, phone, email…" oninput="onSearch(this.value)">
+      <button class="search-clear" id="search-clear" onclick="clearSearch()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="contacts-meta">
+    <span id="contacts-count"></span>
+  </div>
+
+  <!-- States -->
+  <div id="contacts-loading" class="state-box" style="display:none;">
+    <div class="spinner" style="width:38px;height:38px;border-width:3px;"></div>
+    <p style="font-size:14px;color:var(--secondary);">Loading contacts…</p>
+  </div>
+
+  <div id="contacts-empty" class="state-box" style="display:none;">
+    <div class="state-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
+      </svg>
+    </div>
+    <p class="state-title">No contacts yet</p>
+    <p class="state-body">Scan your first business card to see it here.</p>
+  </div>
+
+  <div id="contacts-error" class="state-box" style="display:none;">
+    <div class="state-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+      </svg>
+    </div>
+    <p class="state-title">Could not load</p>
+    <p class="state-body" id="contacts-error-msg">Check that Google Sheets is configured in your .env file.</p>
+    <button class="btn btn-secondary btn-sm" onclick="loadContacts()" style="max-width:180px;margin-top:6px;">Try Again</button>
+  </div>
+
+  <div id="contacts-no-results" class="state-box" style="display:none;">
+    <div class="state-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+      </svg>
+    </div>
+    <p class="state-title">No results</p>
+    <p class="state-body">Try a different name, company, or phone number.</p>
+  </div>
+
+  <div id="contacts-list" class="contacts-list" style="padding-bottom:20px;"></div>
+
+</div><!-- /#tab-contacts -->
+
+<!-- ════════════════════════════════════════════════════════
+     DETAIL MODAL
+════════════════════════════════════════════════════════ -->
+<div id="detail-backdrop" class="modal-backdrop" onclick="closeDetail()"></div>
+<div id="detail-sheet" class="detail-sheet" role="dialog" aria-modal="true">
+  <div class="sheet-handle-row"><div class="sheet-handle"></div></div>
+  <div class="sheet-header">
+    <div id="d-avatar" class="sheet-avatar"></div>
+    <div class="sheet-name-wrap">
+      <div id="d-name" class="sheet-fullname"></div>
+      <div id="d-titco" class="sheet-title-co"></div>
+    </div>
+    <button class="sheet-close" onclick="closeDetail()" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="sheet-rows" id="d-rows"></div>
+  <div class="sheet-actions" id="d-actions"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     BOTTOM TAB BAR
+════════════════════════════════════════════════════════ -->
+<nav class="tab-bar" aria-label="Main navigation">
+  <button id="tb-scan" class="tab-btn active" onclick="switchTab('scan')" aria-label="Scan">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+    </svg>
+    Scan
+  </button>
+  <button id="tb-contacts" class="tab-btn" onclick="switchTab('contacts')" aria-label="All Contacts">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
+    </svg>
+    All Contacts
+  </button>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════
+     WEBCAM OVERLAY (shown on desktop instead of file picker)
+════════════════════════════════════════════════════════ -->
+<div id="webcam-overlay" class="webcam-overlay" style="display:none;" role="dialog" aria-label="Camera">
+
+  <div class="webcam-header">
+    <span class="webcam-title">Scan Business Card</span>
+    <button class="webcam-cancel" onclick="cancelWebcam()">Cancel</button>
+  </div>
+
+  <video id="webcam-video" autoplay playsinline muted></video>
+
+  <div class="webcam-guide-layer">
+    <div class="webcam-guide"></div>
+    <span class="webcam-hint">Align the business card inside the frame</span>
+  </div>
+
+  <div class="webcam-footer">
+    <!-- spacer to balance the flip button -->
+    <div style="width:44px;"></div>
+    <button class="shutter-btn" onclick="captureWebcam()" aria-label="Take photo">
+      <div class="shutter-inner"></div>
+    </button>
+    <button class="webcam-flip-btn" onclick="flipWebcam()" aria-label="Flip camera" title="Switch camera">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+
+<!-- Hidden file inputs: camera uses capture=environment for direct camera on iOS + Android -->
+<input type="file" id="camera-input"  accept="image/*" capture="environment">
+<input type="file" id="gallery-input" accept="image/*">
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CONSTANTS & STATE
+══════════════════════════════════════════════════════════ */
+const FORM_FIELDS = ['firstName','lastName','phone','email','company','title','address','city','state','zip','country','website'];
+const AVATAR_COLORS = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF3B30','#32ADE6','#5AC8FA','#FF6B35','#1A936F'];
+
+let allContacts = [];       // full list from server
+let filteredContacts = [];  // after search
+let currentTab = 'scan';
+
+/* ══════════════════════════════════════════════════════════
+   TAB NAVIGATION
+══════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tb-' + tab).classList.add('active');
+
+  if (tab === 'contacts') loadContacts();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEVICE DETECTION
+══════════════════════════════════════════════════════════ */
+function isMobileDevice() {
+  // True for iPhone, iPad (iOS 13+ reports as Mac in some UA), Android
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+         (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform) &&
+          typeof DeviceOrientationEvent !== 'undefined');
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCAN TAB — camera / file inputs
+══════════════════════════════════════════════════════════ */
+function triggerCamera() {
+  if (isMobileDevice()) {
+    // Mobile: native camera via file input → opens rear camera directly
+    document.getElementById('camera-input').click();
+  } else {
+    // Desktop: live webcam view via getUserMedia
+    startWebcam();
+  }
+}
+
+function triggerGallery() { document.getElementById('gallery-input').click(); }
+
+document.getElementById('camera-input').addEventListener('change',  e => handleFile(e));
+document.getElementById('gallery-input').addEventListener('change', e => handleFile(e));
+
+async function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const base64 = await compress(file);
+  e.target.value = '';
+  await processImage(base64, file.type || 'image/jpeg');
+}
+
+/* ══════════════════════════════════════════════════════════
+   WEBCAM (desktop)
+══════════════════════════════════════════════════════════ */
+let webcamStream   = null;
+let webcamFacing   = 'environment'; // 'environment' = rear, 'user' = front
+
+async function startWebcam(facingMode) {
+  facingMode = facingMode || webcamFacing;
+
+  // Stop any previous stream
+  if (webcamStream) webcamStream.getTracks().forEach(t => t.stop());
+
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facingMode },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
+    const video = document.getElementById('webcam-video');
+    video.srcObject = webcamStream;
+    // Mirror the preview when using front camera
+    video.style.transform = (facingMode === 'user') ? 'scaleX(-1)' : 'scaleX(1)';
+    document.getElementById('webcam-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  } catch (err) {
+    console.warn('Webcam unavailable:', err.message);
+    // Graceful fallback → file picker
+    document.getElementById('camera-input').click();
+  }
+}
+
+function cancelWebcam() {
+  stopWebcam();
+}
+
+function stopWebcam() {
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(t => t.stop());
+    webcamStream = null;
+  }
+  const video = document.getElementById('webcam-video');
+  video.srcObject = null;
+  document.getElementById('webcam-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function flipWebcam() {
+  webcamFacing = (webcamFacing === 'environment') ? 'user' : 'environment';
+  await startWebcam(webcamFacing);
+}
+
+function captureWebcam() {
+  const video  = document.getElementById('webcam-video');
+  const canvas = document.createElement('canvas');
+
+  // Capture at native video resolution
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
+
+  const ctx = canvas.getContext('2d');
+
+  // Un-mirror the frame if front camera is active (so the saved image is not flipped)
+  if (webcamFacing === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const base64 = canvas.toDataURL('image/jpeg', 0.9);
+  stopWebcam();
+  processImage(base64, 'image/jpeg');
+}
+
+/* ══════════════════════════════════════════════════════════
+   CORE IMAGE PROCESSING (shared by file & webcam paths)
+══════════════════════════════════════════════════════════ */
+async function processImage(base64, mimeType) {
+  clearScanError();
+  document.getElementById('preview-img').src = base64;
+  scanShow('preview');
+
+  try {
+    const res  = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64, mimeType }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Scan failed');
+
+    fillForm(json.contact);
+    scanShow('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    scanShow('hero');
+    showScanError(err.message);
+  }
+}
+
+/* ── Compress image before sending ── */
+function compress(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1600;
+        let { width: w, height: h } = img;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.88));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Scan sub-view switcher ── */
+function scanShow(view) {
+  // views: hero | preview | form | success
+  const map = {
+    hero:    { 'sv-hero': true,  'sv-preview': false, 'sv-loading': false, 'sv-form': false, 'sv-success': false },
+    preview: { 'sv-hero': false, 'sv-preview': true,  'sv-loading': true,  'sv-form': false, 'sv-success': false },
+    form:    { 'sv-hero': false, 'sv-preview': true,  'sv-loading': false, 'sv-form': true,  'sv-success': false },
+    success: { 'sv-hero': false, 'sv-preview': false, 'sv-loading': false, 'sv-form': false, 'sv-success': true  },
+  };
+  Object.entries(map[view]).forEach(([id, show]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? (id === 'sv-loading' ? 'flex' : 'block') : 'none';
+  });
+}
+
+/* ── Fill / collect form ── */
+function fillForm(contact) {
+  FORM_FIELDS.forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (el) el.value = contact[f] || '';
+  });
+}
+
+function collectForm() {
+  const d = {};
+  FORM_FIELDS.forEach(f => { d[f] = (document.getElementById('f-' + f)?.value || '').trim(); });
+  return d;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAVE CONTACT — VCF download + Google Sheets
+══════════════════════════════════════════════════════════ */
+async function saveContact() {
+  const data = collectForm();
+  const btn  = document.getElementById('save-btn');
+
+  /* 1. VCF download — must be synchronous in click handler so iOS doesn't block it */
+  const vcf  = buildVCF(data);
+  const blob = new Blob([vcf], { type: 'text/x-vcard;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = ([data.firstName, data.lastName].filter(Boolean).join('_') || 'contact') + '.vcf';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+
+  /* 2. Google Sheets save (non-blocking — VCF is already downloaded) */
+  btn.classList.add('btn-saving');
+  btn.textContent = 'Saving…';
+
+  let sheetsOk  = false;
+  let sheetsMsg = '';
+
+  try {
+    const res  = await fetch('/api/save-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: data }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const json = await res.json();
+    if (res.ok && json.success) {
+      sheetsOk = true;
+    } else {
+      sheetsMsg = json.error || 'Google Sheets save failed.';
+    }
+  } catch (err) {
+    sheetsMsg = err.name === 'TimeoutError'
+      ? 'Timed out connecting to Google Sheets — check credentials and that the API is enabled.'
+      : 'Could not reach server: ' + err.message;
+  }
+
+  /* 3. Show success */
+  const badges = document.getElementById('success-badges');
+  badges.innerHTML = '';
+
+  const vcfBadge = document.createElement('div');
+  vcfBadge.className = 'sheets-badge';
+  vcfBadge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> .vcf downloaded`;
+  badges.appendChild(vcfBadge);
+
+  if (sheetsOk) {
+    const shBadge = document.createElement('div');
+    shBadge.className = 'sheets-badge';
+    shBadge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Saved to Google Sheets`;
+    badges.appendChild(shBadge);
+  } else {
+    const warnBadge = document.createElement('div');
+    warnBadge.className = 'sheets-warn';
+    warnBadge.innerHTML = `⚠ Sheets not saved — ${sheetsMsg}`;
+    badges.appendChild(warnBadge);
+  }
+
+  scanShow('success');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  btn.classList.remove('btn-saving');
+  btn.textContent = 'Save Contact';
+}
+
+/* ── vCard 3.0 builder ── */
+function buildVCF(d) {
+  const esc = s => (s || '').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+  const fn  = [d.firstName, d.lastName].filter(Boolean).join(' ');
+  const lines = [
+    'BEGIN:VCARD', 'VERSION:3.0',
+    `N:${esc(d.lastName)};${esc(d.firstName)};;;`,
+    `FN:${esc(fn) || esc(d.company) || 'Unknown'}`,
+  ];
+  if (d.company) lines.push(`ORG:${esc(d.company)}`);
+  if (d.title)   lines.push(`TITLE:${esc(d.title)}`);
+  if (d.phone)   lines.push(`TEL;TYPE=WORK,VOICE:${esc(d.phone)}`);
+  if (d.email)   lines.push(`EMAIL;TYPE=INTERNET,WORK:${esc(d.email)}`);
+  if (d.address || d.city || d.state || d.zip || d.country)
+    lines.push(`ADR;TYPE=WORK:;;${esc(d.address)};${esc(d.city)};${esc(d.state)};${esc(d.zip)};${esc(d.country)}`);
+  if (d.website) {
+    const url = /^https?:\/\//i.test(d.website) ? d.website : 'https://' + d.website;
+    lines.push(`URL:${esc(url)}`);
+  }
+  lines.push('END:VCARD');
+  return lines.join('\r\n') + '\r\n';
+}
+
+/* ── Reset scan tab ── */
+function resetScan() {
+  FORM_FIELDS.forEach(f => { const el = document.getElementById('f-' + f); if (el) el.value = ''; });
+  document.getElementById('preview-img').src = '';
+  clearScanError();
+  scanShow('hero');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Error helpers ── */
+function showScanError(msg) {
+  const el = document.getElementById('scan-error');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+}
+function clearScanError() {
+  document.getElementById('scan-error').classList.remove('show');
+}
+
+/* ══════════════════════════════════════════════════════════
+   ALL CONTACTS TAB
+══════════════════════════════════════════════════════════ */
+async function loadContacts() {
+  setContactsView('loading');
+
+  try {
+    const res  = await fetch('/api/contacts', { signal: AbortSignal.timeout(20000) });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load contacts');
+
+    allContacts = json.contacts || [];
+    applySearch(document.getElementById('search-input').value);
+  } catch (err) {
+    const msg = err.name === 'TimeoutError'
+      ? 'Request timed out — the server could not reach Google Sheets. Check your credentials and that the Sheets API is enabled.'
+      : err.message;
+    document.getElementById('contacts-error-msg').textContent = msg;
+    setContactsView('error');
+  }
+}
+
+function onSearch(q) {
+  document.getElementById('search-clear').classList.toggle('show', q.length > 0);
+  applySearch(q);
+}
+
+function clearSearch() {
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  document.getElementById('search-clear').classList.remove('show');
+  applySearch('');
+  inp.focus();
+}
+
+function applySearch(q) {
+  const query = q.toLowerCase().trim();
+  filteredContacts = query
+    ? allContacts.filter(c => {
+        const hay = [c.firstName, c.lastName, c.company, c.phone, c.email].join(' ').toLowerCase();
+        return hay.includes(query);
+      })
+    : [...allContacts];
+
+  if (allContacts.length === 0) {
+    setContactsView('empty');
+  } else if (filteredContacts.length === 0) {
+    setContactsView('no-results');
+  } else {
+    renderContactList();
+    setContactsView('list');
+  }
+
+  const count = document.getElementById('contacts-count');
+  if (allContacts.length > 0) {
+    count.textContent = query
+      ? `${filteredContacts.length} of ${allContacts.length} contacts`
+      : `${allContacts.length} contact${allContacts.length !== 1 ? 's' : ''}`;
+  } else {
+    count.textContent = '';
+  }
+}
+
+function setContactsView(state) {
+  ['loading','empty','error','no-results','list'].forEach(s => {
+    const el = document.getElementById('contacts-' + s.replace('-','_') || 'contacts-' + s);
+    // Fix: use exact IDs
+  });
+  document.getElementById('contacts-loading').style.display    = state === 'loading'    ? 'flex' : 'none';
+  document.getElementById('contacts-empty').style.display      = state === 'empty'      ? 'flex' : 'none';
+  document.getElementById('contacts-error').style.display      = state === 'error'      ? 'flex' : 'none';
+  document.getElementById('contacts-no-results').style.display = state === 'no-results' ? 'flex' : 'none';
+  document.getElementById('contacts-list').style.display       = state === 'list'       ? 'flex' : 'none';
+  document.getElementById('contacts-meta').style.display = (state === 'list' || state === 'no-results') ? 'flex' : 'none';
+}
+
+function renderContactList() {
+  const list = document.getElementById('contacts-list');
+  list.innerHTML = '';
+
+  filteredContacts.forEach((c, idx) => {
+    const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Unknown';
+    const initials = getInitials(fullName);
+    const color    = avatarColor(fullName);
+    const meta     = [c.phone, c.email].filter(Boolean).join('  ·  ');
+
+    const card = document.createElement('div');
+    card.className = 'contact-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.innerHTML = `
+      <div class="avatar" style="background:${color}">${initials}</div>
+      <div class="card-info">
+        <div class="card-name">${esc(fullName)}</div>
+        ${c.company ? `<div class="card-company">${esc(c.company)}</div>` : ''}
+        ${meta ? `<div class="card-meta">${esc(meta)}</div>` : ''}
+      </div>
+      <div class="card-chevron"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
+    `;
+    card.addEventListener('click', () => openDetail(c));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter') openDetail(c); });
+    list.appendChild(card);
+  });
+}
+
+/* ── Detail modal ── */
+function openDetail(c) {
+  const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Unknown';
+  const color    = avatarColor(fullName);
+  const initials = getInitials(fullName);
+  const titco    = [c.title, c.company].filter(Boolean).join(' · ');
+
+  document.getElementById('d-avatar').style.background = color;
+  document.getElementById('d-avatar').textContent      = initials;
+  document.getElementById('d-name').textContent        = fullName;
+  document.getElementById('d-titco').textContent       = titco;
+
+  const rows = [];
+  if (c.phone)   rows.push({ label:'Phone',   value: `<a href="tel:${c.phone}">${esc(c.phone)}</a>`, icon:'phone', color:'#34C759' });
+  if (c.email)   rows.push({ label:'Email',   value: `<a href="mailto:${c.email}">${esc(c.email)}</a>`, icon:'email', color:'#FF9500' });
+  if (c.website) {
+    const href = /^https?:\/\//i.test(c.website) ? c.website : 'https://' + c.website;
+    rows.push({ label:'Website', value: `<a href="${href}" target="_blank" rel="noopener">${esc(c.website)}</a>`, icon:'web', color:'#32ADE6' });
+  }
+  if (c.address) rows.push({ label:'Address', value: esc(c.address), icon:'location', color:'#FF3B30' });
+  if (c.dateScanned) rows.push({ label:'Scanned', value: esc(c.dateScanned), icon:'calendar', color:'#8E8E93' });
+
+  const iconSVGs = {
+    phone:    `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>`,
+    email:    `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>`,
+    web:      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>`,
+    location: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>`,
+    calendar: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>`,
+  };
+
+  document.getElementById('d-rows').innerHTML = rows.map(r => `
+    <div class="sheet-row">
+      <div class="sheet-row-icon" style="background:${r.color}">${iconSVGs[r.icon]}</div>
+      <div class="sheet-row-content">
+        <div class="sheet-row-label">${r.label}</div>
+        <div class="sheet-row-value">${r.value}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Download VCF for this contact
+  document.getElementById('d-actions').innerHTML = `
+    <button class="btn btn-primary" onclick="downloadDetailVCF()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
+      Download .vcf
+    </button>
+  `;
+
+  // Store for VCF download
+  window._detailContact = c;
+
+  document.getElementById('detail-backdrop').classList.add('open');
+  document.getElementById('detail-sheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail() {
+  document.getElementById('detail-backdrop').classList.remove('open');
+  document.getElementById('detail-sheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function downloadDetailVCF() {
+  const c = window._detailContact;
+  if (!c) return;
+  const data = {
+    firstName: c.firstName, lastName: c.lastName,
+    phone: c.phone, email: c.email, company: c.company,
+    title: c.title, address: c.address, city: '', state: '', zip: '', country: '',
+    website: c.website,
+  };
+  const vcf  = buildVCF(data);
+  const blob = new Blob([vcf], { type: 'text/x-vcard;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = ([c.firstName, c.lastName].filter(Boolean).join('_') || 'contact') + '.vcf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* ── CSV Export ── */
+function exportCSV() {
+  if (allContacts.length === 0) return;
+
+  const headers = ['Date Scanned','First Name','Last Name','Company','Job Title','Phone','Email','Address','Website'];
+  const rows = allContacts.map(c =>
+    [c.dateScanned,c.firstName,c.lastName,c.company,c.title,c.phone,c.email,c.address,c.website]
+      .map(v => `"${(v||'').replace(/"/g,'""')}"`)
+      .join(',')
+  );
+
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'contacts_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* ── Close detail on Escape ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetail();
+});
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+function getInitials(name) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return (parts[0] || '?').slice(0,2).toUpperCase();
+}
+
+function avatarColor(name) {
+  const idx = (name.charCodeAt(0) || 0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+}
+
+// Minimal HTML escaping for inserted text
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Make contacts-meta visible initially
+document.getElementById('contacts-meta').style.display = 'none';
+</script>
+</body>
+</html>
