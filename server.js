@@ -42,8 +42,8 @@ Return ONLY a valid JSON object with exactly these fields (use "" for any field 
 }
 
 Rules:
-- Split name into firstName and lastName correctly.
-- If there are multiple phone numbers on the card, put the first in "phone" and the second in "phone2". Never concatenate them into one string.
+- Split name into firstName and lastName correctly. Copy each character exactly — do not truncate or alter any name.
+- Phone numbers: if you see TWO separate phone numbers, put the FIRST number ONLY in "phone" and the SECOND number ONLY in "phone2". NEVER merge or concatenate two phone numbers into one string. Each field must contain exactly one phone number or be empty.
 - Include country dialing codes in phone numbers if shown.
 - Copy the website URL exactly as printed on the card.
 - Do NOT wrap the JSON in markdown fences or add any other text.`;
