@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const { GoogleGenAI } = require('@google/genai');
+const Groq = require('groq-sdk');
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -13,12 +13,12 @@ app.post('/api/scan', async (req, res) => {
     const { image, mimeType } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not set in .env' });
+      return res.status(500).json({ error: 'GROQ_API_KEY is not set in .env' });
     }
 
-    const ai         = new GoogleGenAI({ apiKey });
+    const groq      = new Groq({ apiKey });
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
     const mediaType  = mimeType || 'image/jpeg';
 
@@ -48,20 +48,21 @@ Rules:
 - Copy the website URL exactly as printed on the card.
 - Do NOT wrap the JSON in markdown fences or add any other text.`;
 
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.2-11b-vision-preview',
+      max_tokens: 1024,
+      messages: [
         {
           role: 'user',
-          parts: [
-            { inlineData: { mimeType: mediaType, data: base64Data } },
-            { text: prompt },
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64Data}` } },
+            { type: 'text', text: prompt },
           ],
         },
       ],
     });
 
-    let raw = result.text.trim()
+    let raw = (response.choices[0].message.content || '').trim()
       .replace(/^```(?:json)?\r?\n?/, '')
       .replace(/\r?\n?```$/, '')
       .trim();
