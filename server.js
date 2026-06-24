@@ -49,7 +49,7 @@ Rules:
 - Do NOT wrap the JSON in markdown fences or add any other text.`;
 
     const response = await groq.chat.completions.create({
-      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 1024,
       messages: [
         {
