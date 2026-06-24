@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -18,8 +18,7 @@ app.post('/api/scan', async (req, res) => {
       return res.status(500).json({ error: 'GEMINI_API_KEY is not set in .env' });
     }
 
-    const genAI     = new GoogleGenerativeAI(apiKey);
-    const model     = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, { apiVersion: 'v1' });
+    const ai         = new GoogleGenAI({ apiKey });
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
     const mediaType  = mimeType || 'image/jpeg';
 
@@ -49,12 +48,20 @@ Rules:
 - Copy the website URL exactly as printed on the card.
 - Do NOT wrap the JSON in markdown fences or add any other text.`;
 
-    const result = await model.generateContent([
-      { inlineData: { mimeType: mediaType, data: base64Data } },
-      prompt,
-    ]);
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: mediaType, data: base64Data } },
+            { text: prompt },
+          ],
+        },
+      ],
+    });
 
-    let raw = result.response.text().trim()
+    let raw = result.text.trim()
       .replace(/^```(?:json)?\r?\n?/, '')
       .replace(/\r?\n?```$/, '')
       .trim();
