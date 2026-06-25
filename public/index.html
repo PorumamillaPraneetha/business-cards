@@ -405,12 +405,24 @@
       position: sticky; top: calc(var(--header-h) + env(safe-area-inset-top));
       z-index: 30; background: var(--bg);
       padding: 10px 16px 8px;
+      display: flex; align-items: center; gap: 10px;
     }
     .search-box {
-      display: flex; align-items: center; gap: 9px;
+      flex: 1; display: flex; align-items: center; gap: 9px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 9px 14px;
     }
+    .export-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 9px 14px;
+      font-size: 13px; font-weight: 600; color: var(--blue);
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .export-btn svg { width: 15px; height: 15px; }
+    .export-btn:active { opacity: .7; }
     .search-box svg { width: 16px; height: 16px; color: var(--secondary); flex-shrink: 0; }
     .search-input {
       flex: 1; border: none; outline: none; background: transparent;
@@ -895,6 +907,12 @@
         </svg>
       </button>
     </div>
+    <button class="export-btn" onclick="exportContacts()" title="Export all contacts as CSV">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+      </svg>
+      Export
+    </button>
   </div>
 
   <div id="contacts-meta" class="contacts-meta">
@@ -1389,6 +1407,24 @@ async function loadContacts() {
     allContacts = [];
   }
   applySearch(document.getElementById('search-input').value);
+}
+
+function exportContacts() {
+  if (!allContacts.length) return;
+  const headers = ['First Name','Last Name','Phone','Phone 2','Email','Company','Title','Address','City','State','ZIP','Country','Website','Date Scanned'];
+  const fields  = ['firstName','lastName','phone','phone2','email','company','title','address','city','state','zip','country','website','dateScanned'];
+  const csvEsc  = v => '"' + String(v || '').replace(/"/g, '""') + '"';
+  const rows    = allContacts.map(c => fields.map(f => csvEsc(c[f])).join(','));
+  const csv     = [headers.map(csvEsc).join(','), ...rows].join('\r\n');
+  const blob    = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href        = url;
+  a.download    = 'contacts_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function onSearch(q) {
