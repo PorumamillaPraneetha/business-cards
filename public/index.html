@@ -253,12 +253,23 @@
       border-radius: 24px;
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 8px 24px rgba(0,122,255,.35);
-      margin-bottom: 6px;
+      margin: 0 auto 6px;
+      flex-shrink: 0; align-self: center;
     }
     .hero-blob svg { width: 42px; height: 42px; color: #fff; }
 
     .scan-title { font-size: 23px; font-weight: 800; letter-spacing: -.5px; }
     .scan-sub   { font-size: 15px; color: var(--secondary); line-height: 1.5; max-width: 290px; }
+
+    /* ── Desktop vertical centering ── */
+    @media (min-width: 560px) {
+      #tab-scan .page-content {
+        min-height: calc(100dvh - var(--header-h) - env(safe-area-inset-top) - var(--tab-h) - env(safe-area-inset-bottom));
+        display: flex; flex-direction: column; justify-content: center;
+        padding-top: 16px; padding-bottom: 16px;
+      }
+      #scan-card { width: 100%; }
+    }
 
     .scan-btns {
       display: flex; flex-direction: column; gap: 11px;
@@ -721,7 +732,7 @@
           </svg>
         </div>
         <h2 class="scan-title">Scan a Business Card</h2>
-        <p class="scan-sub">Point your camera at a card — Claude AI extracts the contact details instantly.</p>
+        <p class="scan-sub">Point your camera at a card and get the contact details extracted instantly.</p>
 
         <div class="scan-btns">
           <button class="btn btn-primary" onclick="triggerCamera()">
@@ -747,7 +758,7 @@
         <!-- LOADING -->
         <div id="sv-loading" class="loading-wrap" style="display:none;">
           <div class="spinner"></div>
-          <p class="loading-label">Reading card with Claude AI…</p>
+          <p class="loading-label">Scanning your card…</p>
         </div>
       </div>
 
