@@ -1037,6 +1037,9 @@
 <input type="file" id="camera-input"  accept="image/*" capture="environment">
 <input type="file" id="gallery-input" accept="image/*">
 
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <!-- Firebase SDK (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -1413,18 +1416,15 @@ function exportContacts() {
   if (!allContacts.length) return;
   const headers = ['First Name','Last Name','Phone','Phone 2','Email','Company','Title','Address','City','State','ZIP','Country','Website','Date Scanned'];
   const fields  = ['firstName','lastName','phone','phone2','email','company','title','address','city','state','zip','country','website','dateScanned'];
-  const csvEsc  = v => '"' + String(v || '').replace(/"/g, '""') + '"';
-  const rows    = allContacts.map(c => fields.map(f => csvEsc(c[f])).join(','));
-  const csv     = [headers.map(csvEsc).join(','), ...rows].join('\r\n');
-  const blob    = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url     = URL.createObjectURL(blob);
-  const a       = document.createElement('a');
-  a.href        = url;
-  a.download    = 'contacts_' + new Date().toISOString().slice(0,10) + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const rows = allContacts.map(c => {
+    const row = {};
+    headers.forEach((h, i) => { row[h] = c[fields[i]] || ''; });
+    return row;
+  });
+  const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contacts');
+  XLSX.writeFile(wb, 'contacts_' + new Date().toISOString().slice(0, 10) + '.xlsx');
 }
 
 function onSearch(q) {
