@@ -1435,6 +1435,17 @@ async function processBackImage(base64, mimeType) {
     return el && !el.value.trim();
   });
 
+  if (emptyFields.length === 0) {
+    if (btn) {
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:17px;height:17px;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Back side scanned`;
+      btn.classList.add('scanned');
+      btn.disabled = false;
+      btn.onclick = scanBackSide;
+    }
+    showBackScanResult(0);
+    return;
+  }
+
   try {
     const res  = await fetch('/api/scan', {
       method: 'POST',
