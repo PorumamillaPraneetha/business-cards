@@ -467,7 +467,7 @@
 
     /* Contact cards list */
     .contacts-list {
-      padding: 0 16px 8px;
+      padding: 0 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
       display: flex; flex-direction: column; gap: 0;
     }
 
@@ -982,7 +982,7 @@
     <p class="state-body">Try a different name, company, or phone number.</p>
   </div>
 
-  <div id="contacts-list" class="contacts-list" style="padding-bottom:20px;"></div>
+  <div id="contacts-list" class="contacts-list"></div>
 
 </div><!-- /#tab-contacts -->
 
