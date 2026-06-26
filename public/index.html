@@ -390,7 +390,7 @@
     .f-textarea {
       background: transparent; border: none; outline: none;
       font-family: inherit; font-size: 15px; color: var(--text);
-      width: 100%; padding: 0; resize: none; min-height: 60px; line-height: 1.5;
+      width: 100%; padding: 0; resize: none; min-height: 100px; line-height: 1.6; overflow: hidden;
     }
     .f-textarea::placeholder { color: var(--secondary); opacity: .55; }
 
@@ -992,7 +992,7 @@
               </div>
               <div class="f-inner">
                 <div class="f-label">Additional Info / Back Side</div>
-                <textarea id="f-notes" class="f-textarea" rows="3" placeholder="Back side info, services, GSTIN, notes…"></textarea>
+                <textarea id="f-notes" class="f-textarea" rows="5" placeholder="Back side info, services, GSTIN, notes…" oninput="autoResize(this)"></textarea>
               </div>
             </div>
           </div>
@@ -1240,6 +1240,8 @@ const db   = firebase.firestore();
 /* ══════════════════════════════════════════════════════════
    CONSTANTS & STATE
 ══════════════════════════════════════════════════════════ */
+function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+
 const FORM_FIELDS = ['firstName','lastName','phone','phone2','email','company','title','address','city','state','zip','country','website','notes'];
 const AVATAR_COLORS = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF3B30','#32ADE6','#5AC8FA','#FF6B35','#1A936F'];
 
@@ -1498,6 +1500,7 @@ function mergeBackResult(data, emptyFields) {
     const el = document.getElementById('f-notes');
     if (el) {
       el.value = el.value ? el.value + '\n' + data.notes : data.notes;
+      autoResize(el);
       filled++;
     }
   }
