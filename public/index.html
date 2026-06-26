@@ -1286,10 +1286,17 @@ document.getElementById('gallery-input').addEventListener('change', e => handleF
 async function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const base64 = await compress(file);
+  const wasBack = isScanningBack;
+  isScanningBack = false;
   e.target.value = '';
-  if (isScanningBack) {
-    isScanningBack = false;
+  let base64;
+  try {
+    base64 = await compress(file);
+  } catch (err) {
+    showScanError('Could not read image: ' + err.message);
+    return;
+  }
+  if (wasBack) {
     await processBackImage(base64, file.type || 'image/jpeg');
   } else {
     await processImage(base64, file.type || 'image/jpeg');
@@ -1368,9 +1375,10 @@ function captureWebcam() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   const base64 = canvas.toDataURL('image/jpeg', 0.9);
+  const wasBack = isScanningBack;
+  isScanningBack = false;
   stopWebcam();
-  if (isScanningBack) {
-    isScanningBack = false;
+  if (wasBack) {
     processBackImage(base64, 'image/jpeg');
   } else {
     processImage(base64, 'image/jpeg');
@@ -1421,29 +1429,30 @@ function scanBackSide() {
 
 async function processBackImage(base64, mimeType) {
   const btn = document.getElementById('back-scan-btn');
-  if (btn) { btn.textContent = 'Scanning back side…'; btn.disabled = true; }
-
-  const emptyFields = window._backEmptyFields || [];
+  if (btn) {
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;flex-shrink:0;animation:spin .7s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg> Scanning…`;
+    btn.disabled = true;
+  }
 
   try {
     const res  = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64, mimeType, side: 'back', emptyFields }),
+      body: JSON.stringify({ image: base64, mimeType }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Scan failed');
 
-    mergeBackResult(json.contact, emptyFields);
+    const filled = mergeBackResult(json.contact);
 
     if (btn) {
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:17px;height:17px;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Back side scanned`;
       btn.classList.add('scanned');
       btn.disabled = false;
-      btn.onclick = null;
+      btn.onclick = scanBackSide;
     }
+    showBackScanResult(filled);
   } catch (err) {
-    isScanningBack = false;
     if (btn) {
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg> Scan Back Side (Optional)`;
       btn.disabled = false;
@@ -1453,29 +1462,44 @@ async function processBackImage(base64, mimeType) {
   }
 }
 
-function mergeBackResult(data, emptyFields) {
-  // Fill only fields that were empty and now have a value from the back
-  emptyFields.forEach(f => {
-    if (data[f]) {
-      const el = document.getElementById('f-' + f);
-      if (el && !el.value.trim()) el.value = data[f];
+function mergeBackResult(data) {
+  let filled = 0;
+  FORM_FIELDS.forEach(f => {
+    if (!data[f]) return;
+    const el = document.getElementById('f-' + f);
+    if (el && !el.value.trim()) {
+      el.value = data[f];
+      filled++;
     }
   });
-  // Notes: only what didn't fit into any field
-  if (data.notes) {
-    const el = document.getElementById('f-notes');
-    if (el) el.value = data.notes;
-  }
-  // Re-render quick actions in case phone/email were filled from back
   renderFormQuickActions(collectForm());
+  return filled;
+}
+
+function showBackScanResult(filled) {
+  const msg = filled > 0
+    ? `Back side scanned — ${filled} field${filled > 1 ? 's' : ''} filled`
+    : 'Back side scanned — no new fields found';
+  const el = document.getElementById('scan-error');
+  el.style.background = filled > 0 ? 'rgba(52,199,89,.15)' : '';
+  el.style.borderColor = filled > 0 ? 'rgba(52,199,89,.4)' : '';
+  el.style.color       = filled > 0 ? '#34C759' : '';
+  el.textContent = (filled > 0 ? '✓ ' : 'ℹ ') + msg;
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    el.style.background = el.style.borderColor = el.style.color = '';
+  }, 4000);
 }
 
 /* ── Compress image before sending ── */
 function compress(file) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read image file.'));
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => resolve(e.target.result); // fallback: send original
       img.onload = () => {
         const MAX = 1600;
         let { width: w, height: h } = img;
