@@ -1919,6 +1919,10 @@ function closeUserMenu() {
 
 auth.onAuthStateChanged(user => {
   if (user) {
+    if (!user.email || !user.email.endsWith(AUTH_DOMAIN)) {
+      auth.signOut();
+      return;
+    }
     currentUser = user;
     document.getElementById('sign-in-screen').style.display = 'none';
     const initial = usernameFromUser(user).charAt(0).toUpperCase() || '?';
