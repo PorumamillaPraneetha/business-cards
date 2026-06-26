@@ -54,7 +54,8 @@ Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 {"firstName":"","lastName":"","phone":"","phone2":"","email":"","company":"","title":"","address":"","city":"","state":"","zip":"","country":"","website":""}
 
 Rules:
-- Split name into firstName and lastName. Copy each character exactly.
+- NAMES ARE CRITICAL: Read every single letter of the name carefully before writing it. Count the letters. Do NOT truncate, drop, or alter any character. For example "Chelluboina" must be written as "Chelluboina" — all 10 letters, not "Chelluboin" or any shortened form.
+- Split the full name into firstName (first + middle names) and lastName (family name/surname). Copy every character exactly as printed.
 - Two phone numbers: first in "phone", second in "phone2". Never merge them.
 - Include country dialing codes. Copy website exactly as printed.`;
 
