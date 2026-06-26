@@ -35,13 +35,19 @@ app.post('/api/scan', async (req, res) => {
       : '';
 
     const prompt = side === 'back'
-      ? `This is the BACK of a business card. Look for these specific fields that were not found on the front: ${emptyList}.
+      ? `This is the BACK of a business card. The front was already scanned.
+
+Your job:
+1. Look for these fields that are still missing: ${emptyList}. If found, fill them in.
+2. Collect ALL other text on the back (services, benefits, taglines, GSTIN, social handles, descriptions — anything) into "notes" as a newline-separated list.
 
 Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 {"firstName":"","lastName":"","phone":"","phone2":"","email":"","company":"","title":"","address":"","city":"","state":"","zip":"","country":"","website":"","notes":""}
 
-Fill ONLY the fields listed above (${emptyList}) if you can see them. Leave all other fields as "".
-Put any extra information that does not fit into any field into "notes".`
+Critical rules:
+- If a field value is NOT found on the card, use exactly "" (empty string). NEVER write "not found", "not visible", "N/A", "none", or any placeholder text.
+- Only fill fields from this list: ${emptyList}. Leave all other contact fields as "".
+- "notes" is special: always fill it with any text on the back that doesn't belong in the above fields, even if notes is not in the empty list.`
       : `Extract contact information from this business card image.
 
 Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
