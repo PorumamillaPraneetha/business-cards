@@ -751,6 +751,57 @@
       width: 28px; height: 28px; border-radius: 50%;
       object-fit: cover; display: block;
     }
+
+    /* ── Message compose modal ──────────────────────────── */
+    #msg-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 110;
+    }
+    .msg-sheet {
+      display: none; position: fixed; left: 0; right: 0; bottom: 0;
+      z-index: 120; background: var(--surface);
+      border-radius: 20px 20px 0 0;
+      flex-direction: column; max-height: 80dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+      transform: translateY(100%);
+      transition: transform .28s cubic-bezier(.32,1,.23,1);
+    }
+    .msg-sheet.open { display: flex; transform: translateY(0); }
+    @media(min-width:600px) {
+      .msg-sheet {
+        left: 50%; right: auto; width: 480px;
+        transform: translateX(-50%) translateY(100%);
+        border-radius: 20px 20px 0 0;
+      }
+      .msg-sheet.open { transform: translateX(-50%) translateY(0); }
+    }
+    .msg-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .msg-title { font-size: 16px; font-weight: 700; }
+    .msg-close {
+      width: 30px; height: 30px; border-radius: 50%; border: none;
+      background: var(--border); color: var(--secondary);
+      font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .msg-body { flex: 1; overflow-y: auto; padding: 14px 18px 0; display: flex; flex-direction: column; gap: 10px; }
+    .msg-to { font-size: 13px; color: var(--secondary); }
+    .msg-to strong { color: var(--text); }
+    .msg-textarea {
+      flex: 1; min-height: 160px; width: 100%; box-sizing: border-box;
+      background: var(--bg); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 12px 14px; font-size: 15px; font-family: inherit; line-height: 1.5;
+      resize: none; outline: none;
+      transition: border-color .15s;
+    }
+    .msg-textarea:focus { border-color: var(--blue); }
+    .msg-send-row {
+      display: flex; gap: 10px; padding: 12px 18px 14px; flex-shrink: 0;
+    }
+    .msg-send-row .btn { flex: 1; }
   </style>
 </head>
 <body>
@@ -1097,6 +1148,31 @@
 <!-- ════════════════════════════════════════════════════════
      WEBCAM OVERLAY (shown on desktop instead of file picker)
 ════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════
+     MESSAGE COMPOSE MODAL
+════════════════════════════════════════════════════════ -->
+<div id="msg-backdrop" onclick="closeMsgCompose()"></div>
+<div id="msg-sheet" class="msg-sheet" role="dialog" aria-modal="true">
+  <div class="msg-header">
+    <span class="msg-title">Send Message</span>
+    <button class="msg-close" onclick="closeMsgCompose()" aria-label="Close">✕</button>
+  </div>
+  <div class="msg-body">
+    <div class="msg-to">To: <strong id="msg-to-name"></strong></div>
+    <textarea id="msg-textarea" class="msg-textarea" rows="7" placeholder="Type your message..."></textarea>
+  </div>
+  <div class="msg-send-row">
+    <button id="msg-wa-btn" class="btn btn-primary" style="background:#25D366;border-color:#25D366;display:none;" onclick="sendMsg('wa')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+      WhatsApp
+    </button>
+    <button id="msg-sms-btn" class="btn btn-outline" style="display:none;" onclick="sendMsg('sms')">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
+      SMS
+    </button>
+  </div>
+</div>
+
 <div id="webcam-overlay" class="webcam-overlay" style="display:none;" role="dialog" aria-label="Camera">
 
   <div class="webcam-header">
@@ -1445,12 +1521,13 @@ function fillForm(contact) {
 function renderFormQuickActions(data) {
   const container = document.getElementById('form-quick-actions');
   if (!container) return;
+  window._formQaData = data;
   const waNum = (data.phone || '').replace(/[^\d]/g, '');
   const btns = [];
   if (data.phone) {
     btns.push(`<a href="tel:${data.phone}" class="quick-btn"><div class="quick-btn-icon" style="background:#34C759;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg></div><span class="quick-btn-label">Call</span></a>`);
-    btns.push(`<a href="sms:${data.phone}" class="quick-btn"><div class="quick-btn-icon" style="background:#007AFF;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg></div><span class="quick-btn-label">Message</span></a>`);
-    if (waNum) btns.push(`<a href="https://wa.me/${waNum}" target="_blank" rel="noopener" class="quick-btn"><div class="quick-btn-icon" style="background:#25D366;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></div><span class="quick-btn-label">WhatsApp</span></a>`);
+    btns.push(`<button onclick="openMsgCompose(window._formQaData)" class="quick-btn"><div class="quick-btn-icon" style="background:#007AFF;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg></div><span class="quick-btn-label">Message</span></button>`);
+    if (waNum) btns.push(`<button onclick="openMsgCompose(window._formQaData)" class="quick-btn"><div class="quick-btn-icon" style="background:#25D366;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></div><span class="quick-btn-label">WhatsApp</span></button>`);
   }
   if (data.email) {
     btns.push(`<a href="mailto:${data.email}" class="quick-btn"><div class="quick-btn-icon" style="background:#FF9500;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></div><span class="quick-btn-label">Email</span></a>`);
@@ -1738,18 +1815,18 @@ function openDetail(c) {
         </div>
         <span class="quick-btn-label">Call</span>
       </a>
-      <a href="sms:${c.phone}" class="quick-btn">
+      <button onclick="openMsgCompose(window._detailContact)" class="quick-btn">
         <div class="quick-btn-icon" style="background:#007AFF;">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
         </div>
         <span class="quick-btn-label">Message</span>
-      </a>
-      ${waNum ? `<a href="https://wa.me/${waNum}" target="_blank" rel="noopener" class="quick-btn">
+      </button>
+      ${waNum ? `<button onclick="openMsgCompose(window._detailContact)" class="quick-btn">
         <div class="quick-btn-icon" style="background:#25D366;">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
         </div>
         <span class="quick-btn-label">WhatsApp</span>
-      </a>` : ''}
+      </button>` : ''}
     `);
   }
   if (c.email) {
@@ -1933,6 +2010,50 @@ function showUserMenu() {
 function closeUserMenu() {
   document.getElementById('user-menu').style.display          = 'none';
   document.getElementById('user-menu-backdrop').style.display = 'none';
+}
+
+/* ══════════════════════════════════════════════════════════
+   MESSAGE COMPOSE
+══════════════════════════════════════════════════════════ */
+const MSG_TEMPLATE = (name) =>
+  `Hi ${name},\n\nThis is Surya from Hopper Automation. It was nice meeting you the other day!\n\nI look forward to catching up with you and discussing more about your organisation.`;
+
+function openMsgCompose(contactData) {
+  if (!contactData) return;
+  const firstName = contactData.firstName || '';
+  const lastName  = contactData.lastName  || '';
+  const name      = [firstName, lastName].filter(Boolean).join(' ') || 'there';
+  const phone     = contactData.phone || '';
+  const waNum     = phone.replace(/[^\d]/g, '');
+
+  window._msgPhone = phone;
+  window._msgWaNum = waNum;
+
+  document.getElementById('msg-to-name').textContent  = name;
+  document.getElementById('msg-textarea').value       = MSG_TEMPLATE(name);
+  document.getElementById('msg-wa-btn').style.display  = waNum  ? 'flex' : 'none';
+  document.getElementById('msg-sms-btn').style.display = phone  ? 'flex' : 'none';
+
+  document.getElementById('msg-backdrop').style.display = 'block';
+  document.getElementById('msg-sheet').classList.add('open');
+  setTimeout(() => document.getElementById('msg-textarea').focus(), 300);
+}
+
+function closeMsgCompose() {
+  document.getElementById('msg-backdrop').style.display = 'none';
+  document.getElementById('msg-sheet').classList.remove('open');
+}
+
+function sendMsg(channel) {
+  const text = document.getElementById('msg-textarea').value.trim();
+  if (!text) return;
+  const encoded = encodeURIComponent(text);
+  if (channel === 'wa' && window._msgWaNum) {
+    window.open(`https://wa.me/${window._msgWaNum}?text=${encoded}`, '_blank', 'noopener');
+  } else if (channel === 'sms' && window._msgPhone) {
+    window.location.href = `sms:${window._msgPhone}?body=${encoded}`;
+  }
+  closeMsgCompose();
 }
 
 auth.onAuthStateChanged(user => {
