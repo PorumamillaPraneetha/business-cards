@@ -1712,13 +1712,16 @@ function openDetail(c) {
     `);
   }
 
-  // Download VCF for this contact
   document.getElementById('d-actions').innerHTML = `
     ${qaBtns.length ? `<div class="quick-actions">${qaBtns.join('')}</div>` : ''}
     <div style="padding: 12px 18px 10px; display:flex; flex-direction:column; gap:10px;">
       <button class="btn btn-primary" onclick="downloadDetailVCF()">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
         Download .vcf
+      </button>
+      <button class="btn btn-outline" style="color:var(--red);border-color:var(--red);" onclick="deleteContact('${c.id}')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+        Delete Contact
       </button>
     </div>
   `;
@@ -1735,6 +1738,19 @@ function closeDetail() {
   document.getElementById('detail-backdrop').classList.remove('open');
   document.getElementById('detail-sheet').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+async function deleteContact(contactId) {
+  if (!confirm('Delete this contact? This cannot be undone.')) return;
+  if (!currentUser) return;
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('contacts').doc(contactId).delete();
+    allContacts = allContacts.filter(c => c.id !== contactId);
+    closeDetail();
+    applySearch(document.getElementById('search-input').value);
+  } catch (err) {
+    alert('Failed to delete contact: ' + err.message);
+  }
 }
 
 function downloadDetailVCF() {
