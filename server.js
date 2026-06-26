@@ -47,7 +47,12 @@ Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 Critical rules:
 - If a field value is NOT found on the card, use exactly "" (empty string). NEVER write "not found", "not visible", "N/A", "none", or any placeholder text.
 - Only fill fields from this list: ${emptyList}. Leave all other contact fields as "".
-- "notes" is special: always fill it with any text on the back that doesn't belong in the above fields, even if notes is not in the empty list.`
+- "notes" is special: always fill it with any text on the back that doesn't belong in the above fields, even if notes is not in the empty list. Format notes like this:
+  • If the back has a section heading (e.g. "Benefits", "Features", "Services"), write it as "Benefits:" on its own line, then list each item as "• item" on a new line.
+  • If there is an email address in notes, write it as "Email: address@example.com"
+  • If there is a phone number in notes, write it as "Phone: +91XXXXXXXXXX"
+  • If there is a website in notes, write it as "Website: www.example.com"
+  • Separate different sections with a blank line.`
       : `Extract contact information from this business card image.
 
 Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
@@ -57,7 +62,8 @@ Rules:
 - NAMES ARE CRITICAL: Read every single letter of the name carefully before writing it. Count the letters. Do NOT truncate, drop, or alter any character. For example "Chelluboina" must be written as "Chelluboina" — all 10 letters, not "Chelluboin" or any shortened form.
 - Split the full name into firstName (first + middle names) and lastName (family name/surname). Copy every character exactly as printed.
 - Two phone numbers: first in "phone", second in "phone2". Never merge them.
-- Include country dialing codes. Copy website exactly as printed.`;
+- Include country dialing codes. Copy website exactly as printed.
+- State and ZIP are SEPARATE fields. Never put "AP - 531173" in zip; "AP" goes in state, "531173" goes in zip.`;
 
     const messages = [
       {
