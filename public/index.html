@@ -56,6 +56,21 @@
       overflow-x: hidden;
     }
 
+    /* ── Auth loading gate ──────────────────────────────── */
+    #auth-gate {
+      position: fixed; inset: 0; z-index: 300;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .auth-gate-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── Tab pages ──────────────────────────────────────── */
     .tab-page { display: none; }
     .tab-page.active { display: block; }
@@ -743,7 +758,9 @@
 <!-- ════════════════════════════════════════════════════════
      SIGN-IN SCREEN
 ════════════════════════════════════════════════════════ -->
-<div id="sign-in-screen">
+<div id="auth-gate"><div class="auth-gate-spinner"></div></div>
+
+<div id="sign-in-screen" style="display:none;">
   <div class="signin-blob">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
       <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
@@ -1854,8 +1871,9 @@ function friendlyAuthError(err) {
     case 'auth/email-already-in-use':return 'That username is already taken.';
     case 'auth/weak-password':       return 'Password must be at least 6 characters.';
     case 'auth/invalid-email':       return 'Username can only contain letters, numbers, and dots.';
-    case 'auth/too-many-requests':   return 'Too many attempts. Please wait a moment.';
-    case 'auth/invalid-credential':  return 'Incorrect username or password.';
+    case 'auth/too-many-requests':      return 'Too many attempts. Please wait a moment.';
+    case 'auth/invalid-credential':     return 'Incorrect username or password.';
+    case 'auth/operation-not-allowed':  return 'Sign-in is not configured yet. Enable Email/Password in Firebase Console.';
     default:                         return err.message || 'Something went wrong.';
   }
 }
@@ -1918,24 +1936,29 @@ function closeUserMenu() {
 }
 
 auth.onAuthStateChanged(user => {
+  const gate      = document.getElementById('auth-gate');
+  const signInScr = document.getElementById('sign-in-screen');
+
   if (user) {
     if (!user.email || !user.email.endsWith(AUTH_DOMAIN)) {
       auth.signOut();
       return;
     }
     currentUser = user;
-    document.getElementById('sign-in-screen').style.display = 'none';
+    gate.style.display    = 'none';
+    signInScr.style.display = 'none';
     const initial = usernameFromUser(user).charAt(0).toUpperCase() || '?';
     ['scan', 'contacts'].forEach(tab => {
       const btn    = document.getElementById('user-btn-' + tab);
       const avatar = document.getElementById('user-avatar-' + tab);
-      if (btn)    btn.style.display    = 'flex';
-      if (avatar) avatar.textContent   = initial;
+      if (btn)    btn.style.display  = 'flex';
+      if (avatar) avatar.textContent = initial;
     });
     if (currentTab === 'contacts') loadContacts();
   } else {
     currentUser = null;
-    document.getElementById('sign-in-screen').style.display = 'flex';
+    gate.style.display      = 'none';
+    signInScr.style.display = 'flex';
     ['scan', 'contacts'].forEach(tab => {
       const btn = document.getElementById('user-btn-' + tab);
       if (btn) btn.style.display = 'none';
