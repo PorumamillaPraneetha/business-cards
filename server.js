@@ -90,11 +90,15 @@ Rules:
       .replace(/\r?\n?```$/, '')
       .trim();
 
+    // Extract JSON object even if model adds surrounding text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) raw = jsonMatch[0];
+
     let contact;
     try {
       contact = JSON.parse(raw);
     } catch {
-      console.error('Gemini returned non-JSON:', raw);
+      console.error('Model returned non-JSON:', raw);
       return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
     }
 
