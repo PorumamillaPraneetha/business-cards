@@ -58,41 +58,49 @@ Rules:
 - Two phone numbers: first in "phone", second in "phone2". Never merge them.
 - Include country dialing codes. Copy website exactly as printed.`;
 
-    const response = await groq.chat.completions.create({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a data extraction assistant. You ONLY output valid JSON. Never add explanations, markdown, or any other text.',
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64Data}` } },
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
-    });
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a data extraction assistant. You ONLY output valid JSON. Never add explanations, markdown, or any other text.',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64Data}` } },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ];
 
-    let raw = (response.choices[0].message.content || '').trim()
-      .replace(/^```(?:json)?\r?\n?/, '')
-      .replace(/\r?\n?```$/, '')
-      .trim();
-
-    // Extract the first {...} block in case model added surrounding text
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) raw = jsonMatch[0];
+    function parseResponse(content) {
+      let raw = (content || '').trim()
+        .replace(/^```(?:json)?\r?\n?/, '')
+        .replace(/\r?\n?```$/, '')
+        .trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) raw = jsonMatch[0];
+      return JSON.parse(raw);
+    }
 
     let contact;
-    try {
-      contact = JSON.parse(raw);
-    } catch {
-      console.error('Model returned non-JSON:', raw);
-      // For back-side, return empty contact rather than failing
-      if (side === 'back') return res.json({ contact: EMPTY_CONTACT });
-      return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
+    // Try up to 2 times — model occasionally returns non-JSON on first attempt
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await groq.chat.completions.create({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          max_tokens: 1024,
+          messages,
+        });
+        contact = parseResponse(response.choices[0].message.content);
+        break; // success
+      } catch (parseErr) {
+        if (attempt === 1) {
+          console.error('Model returned non-JSON after 2 attempts');
+          if (side === 'back') return res.json({ contact: EMPTY_CONTACT });
+          return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
+        }
+        // else retry
+      }
     }
 
     res.json({ contact });
