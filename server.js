@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── Scan card with Groq ────────────────────────────────────
 app.post('/api/scan', async (req, res) => {
   try {
-    const { image, mimeType, side } = req.body;
+    const { image, mimeType, side, emptyFields } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
     const apiKey = process.env.GROQ_API_KEY;
@@ -22,17 +22,28 @@ app.post('/api/scan', async (req, res) => {
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
     const mediaType  = mimeType || 'image/jpeg';
 
+    const emptyList = Array.isArray(emptyFields) && emptyFields.length
+      ? emptyFields.join(', ')
+      : 'none';
+
     const prompt = side === 'back'
-      ? `This is the BACK side of a business card. Capture ALL visible text on it.
-Return ONLY a valid JSON object with exactly this field (use "" if nothing useful is visible):
+      ? `This is the BACK of a business card. The front side has already been scanned.
+These contact fields are still EMPTY and should be filled if the information appears on this back side: ${emptyList}.
+
+Return ONLY a valid JSON object with ALL these fields (use "" for anything not found):
 {
+  "firstName": "", "lastName": "", "phone": "", "phone2": "",
+  "email": "", "company": "", "title": "", "address": "",
+  "city": "", "state": "", "zip": "", "country": "", "website": "",
   "notes": ""
 }
+
 Rules:
-- Put ALL content from the back in "notes" as clean, readable text.
-- For addresses, label them clearly (e.g. "Registered Office: 1079, Sudama Nagar, Indore, MP" or "Branch Office: B-22, Azad Sonali, Mumbai, MH").
-- Include services, GSTIN, benefits, company description, or any other text you see.
-- Separate different items with a newline.
+- ONLY fill fields from the empty list (${emptyList}). Leave all other contact fields as "".
+- For addresses: if you see a complete address (street, city, state, zip) and "address"/"city"/"state"/"zip" are in the empty list, fill each field separately.
+- If there are TWO addresses on the back, put the second one in "notes".
+- For "notes": put ONLY info that does not fit any of the empty fields above (e.g. GSTIN, services list, benefits, company description). Leave as "" if everything fit into fields.
+- Separate notes items with newlines.
 - Do NOT wrap the JSON in markdown fences or add any other text.`
       : `Extract the contact information from this business card image.
 Return ONLY a valid JSON object with exactly these fields (use "" for any field not visible):
