@@ -1853,7 +1853,8 @@ function buildVCF(d) {
     const url = /^https?:\/\//i.test(d.website) ? d.website : 'https://' + d.website;
     lines.push(`URL:${esc(url)}`);
   }
-  if (d.notes) lines.push(`NOTE:${esc(d.notes)}`);
+  if (d.notes)  lines.push(`NOTE:${esc(d.notes)}`);
+  if (d.group)  lines.push(`CATEGORIES:${esc(d.group)}`);
   lines.push('END:VCARD');
   return lines.join('\r\n') + '\r\n';
 }
