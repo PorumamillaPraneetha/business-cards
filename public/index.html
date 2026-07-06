@@ -524,6 +524,13 @@
 
     .card-chevron { color: var(--secondary); flex-shrink: 0; }
     .card-chevron svg { width: 14px; height: 14px; }
+    .card-group-tag {
+      font-size: 10px; font-weight: 700; letter-spacing: .2px;
+      background: var(--blue); color: #fff;
+      padding: 3px 8px; border-radius: 20px;
+      white-space: nowrap; flex-shrink: 0; margin-right: 4px;
+      text-transform: uppercase;
+    }
 
     /* States */
     .state-box {
@@ -1105,6 +1112,22 @@
           </div>
         </div>
 
+        <!-- Group / Category -->
+        <div class="form-group">
+          <div class="group-label">Group</div>
+          <div class="field-list">
+            <div class="field-row">
+              <div class="f-badge b-purple">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/></svg>
+              </div>
+              <div class="f-inner">
+                <div class="f-label">Group / Category</div>
+                <input id="f-group" type="text" class="f-input" placeholder="e.g. Tech Event, Investors, Partners…" autocorrect="off">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="form-actions">
           <div id="form-quick-actions" class="form-quick-actions" style="display:none;"></div>
           <button id="save-btn" class="btn btn-success" onclick="saveContact()">
@@ -1397,7 +1420,7 @@ const db   = firebase.firestore();
 ══════════════════════════════════════════════════════════ */
 function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
-const FORM_FIELDS = ['firstName','lastName','phone','phone2','email','company','title','address','city','state','zip','country','website','notes'];
+const FORM_FIELDS = ['firstName','lastName','phone','phone2','email','company','title','address','city','state','zip','country','website','notes','group'];
 const AVATAR_COLORS = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF3B30','#32ADE6','#5AC8FA','#FF6B35','#1A936F'];
 
 let allContacts = [];
@@ -1964,6 +1987,7 @@ function renderContactList() {
         ${c.company ? `<div class="card-company">${esc(c.company)}</div>` : ''}
         ${meta ? `<div class="card-meta">${esc(meta)}</div>` : ''}
       </div>
+      ${c.group ? `<div class="card-group-tag">${esc(c.group)}</div>` : ''}
       <div class="card-chevron"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
     `;
     card.addEventListener('click', () => openDetail(c));
@@ -1994,6 +2018,7 @@ function openDetail(c) {
   }
   if (c.address) rows.push({ label:'Address', value: esc(c.address), icon:'location', color:'#FF3B30' });
   if (c.notes)       rows.push({ label:'Notes',   value: esc(c.notes).replace(/\n/g,'<br>'), icon:'notes', color:'#32ADE6' });
+  if (c.group)       rows.push({ label:'Group',   value: esc(c.group), icon:'group', color:'#AF52DE' });
   if (c.dateScanned) rows.push({ label:'Scanned', value: esc(c.dateScanned), icon:'calendar', color:'#8E8E93' });
 
   const iconSVGs = {
@@ -2003,6 +2028,7 @@ function openDetail(c) {
     location: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>`,
     calendar: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>`,
     notes:    `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>`,
+    group:    `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/></svg>`,
   };
 
   document.getElementById('d-rows').innerHTML = rows.map(r => `
