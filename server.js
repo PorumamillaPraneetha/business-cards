@@ -59,11 +59,14 @@ Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 {"firstName":"","lastName":"","phone":"","phone2":"","email":"","company":"","title":"","address":"","city":"","state":"","zip":"","country":"","website":""}
 
 Rules:
-- NAMES ARE CRITICAL: Read every single letter of the name carefully before writing it. Count the letters. Do NOT truncate, drop, or alter any character. For example "Chelluboina" must be written as "Chelluboina" — all 10 letters, not "Chelluboin" or any shortened form.
+- YOU ARE A COPIER, NOT A GENERATOR. Every character you output must be physically visible on the card image. Never guess, infer, auto-complete, or hallucinate any value.
+- PHONE NUMBERS: Copy each digit one at a time exactly as printed. Do not add, remove, rearrange, or guess any digit. If a number is "+91 90325 63636", output exactly "+91 90325 63636".
+- NAMES ARE CRITICAL: Read every single letter before writing. Do NOT truncate. "Chelluboina" = 11 letters, write all 11. Never shorten a name.
 - Split the full name into firstName (first + middle names) and lastName (family name/surname). Copy every character exactly as printed.
+- EMAIL: Copy character by character. Do not guess the domain or username.
 - Two phone numbers: first in "phone", second in "phone2". Never merge them.
-- Include country dialing codes. Copy website exactly as printed.
-- State and ZIP are SEPARATE fields. Never put "AP - 531173" in zip; "AP" goes in state, "531173" goes in zip.`;
+- Include country dialing codes exactly as shown. Copy website exactly as printed.
+- State and ZIP are SEPARATE fields. "AP" goes in state, "531173" goes in zip — never combined.`;
 
     const messages = [
       {
@@ -96,6 +99,7 @@ Rules:
         const response = await groq.chat.completions.create({
           model: 'meta-llama/llama-4-scout-17b-16e-instruct',
           max_tokens: 1024,
+          temperature: 0,
           messages,
         });
         contact = parseResponse(response.choices[0].message.content);

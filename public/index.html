@@ -834,12 +834,14 @@
     }
     .user-menu-action:active { opacity: .6; }
 
-    /* ── Broadcast screen ───────────────────────────── */
-    #broadcast-screen {
-      display: none; position: fixed; inset: 0; z-index: 170;
-      background: var(--bg); flex-direction: column;
+    /* ── Message tab (3rd tab) ──────────────────────── */
+    #tab-message { display: none; }
+    #tab-message.active {
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; right: 0;
+      bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      background: var(--bg); z-index: 10;
     }
-    #broadcast-screen.open { display: flex; }
     .bc-top-bar {
       background: var(--surface); border-bottom: 1px solid var(--border);
       height: calc(var(--header-h) + env(safe-area-inset-top));
@@ -847,21 +849,27 @@
       display: flex; align-items: center;
       padding-left: 16px; padding-right: 16px; gap: 10px; flex-shrink: 0;
     }
-    .bc-top-bar h2 { flex: 1; font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
-    .bc-cancel {
-      background: none; border: none; font-size: 15px;
-      color: var(--blue); font-weight: 600; cursor: pointer;
-      padding: 6px; font-family: inherit; -webkit-tap-highlight-color: transparent;
+    .bc-top-bar h1 { flex: 1; font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+
+    /* Group filter pills */
+    .msg-groups-bar {
+      display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;
+      padding: 10px 16px 10px; border-bottom: 1px solid var(--border);
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
-    .bc-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-    .bc-textarea {
-      width: 100%; min-height: 130px;
-      background: var(--surface); color: var(--text);
-      border: 1.5px solid var(--border); border-radius: 14px;
-      padding: 14px; font-size: 15px; font-family: inherit; line-height: 1.5;
-      resize: none; outline: none; transition: border-color .15s;
+    .msg-groups-bar::-webkit-scrollbar { display: none; }
+    .group-pill {
+      flex-shrink: 0; padding: 5px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--surface);
+      font-size: 13px; font-weight: 600; color: var(--secondary);
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .12s, color .12s, border-color .12s;
     }
-    .bc-textarea:focus { border-color: var(--blue); }
+    .group-pill.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* Scrollable contacts area */
+    .bc-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
     .bc-section-header { display: flex; align-items: center; justify-content: space-between; }
     .bc-section-label { font-size: 13px; font-weight: 600; color: var(--secondary); text-transform: uppercase; letter-spacing: .4px; }
     .bc-select-all {
@@ -893,11 +901,22 @@
     .bc-contact-name { font-size: 15px; font-weight: 500; }
     .bc-contact-sub { font-size: 12px; color: var(--secondary); margin-top: 1px; }
     .bc-empty { text-align: center; color: var(--secondary); font-size: 14px; padding: 32px 0; }
-    .bc-footer {
-      padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom));
-      background: var(--surface); border-top: 1px solid var(--border);
-      display: flex; gap: 10px; flex-shrink: 0;
+
+    /* Sticky compose area at bottom of message tab */
+    .msg-compose-footer {
+      flex-shrink: 0; background: var(--surface); border-top: 1px solid var(--border);
+      padding: 12px 16px;
     }
+    .bc-textarea {
+      width: 100%; min-height: 70px; max-height: 120px;
+      background: var(--bg); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 10px 14px; font-size: 15px; font-family: inherit; line-height: 1.5;
+      resize: none; outline: none; transition: border-color .15s; display: block;
+      margin-bottom: 10px;
+    }
+    .bc-textarea:focus { border-color: var(--blue); }
+    .msg-send-btns { display: flex; gap: 8px; }
 
     /* ── WhatsApp send sheet ────────────────────────── */
     #wa-send-backdrop { display: none; position: fixed; inset: 0; z-index: 180; background: rgba(0,0,0,.45); }
@@ -929,6 +948,20 @@
     .wa-send-item:last-child { border-bottom: none; }
     .wa-send-name { flex: 1; font-size: 15px; font-weight: 500; }
     .wa-send-num { font-size: 12px; color: var(--secondary); margin-top: 1px; }
+    .wa-send-item.wa-sent { background: var(--fill); }
+    .wa-sent-check { color: var(--green); font-size: 18px; font-weight: 900; flex-shrink: 0; }
+    .wa-send-footer {
+      padding: 10px 18px; padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border); flex-shrink: 0;
+      display: flex; justify-content: flex-end;
+    }
+    .wa-done-btn {
+      background: var(--green); border: none; border-radius: 12px; color: #fff;
+      font-size: 15px; font-weight: 700; padding: 10px 28px;
+      cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wa-done-btn:active { opacity: .8; }
   </style>
 </head>
 <body>
@@ -1265,12 +1298,6 @@
   <div class="user-menu-info">
     <div id="user-menu-name" class="user-menu-name"></div>
   </div>
-  <button class="user-menu-action" onclick="openBroadcast()">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
-    </svg>
-    Message
-  </button>
   <button class="user-menu-signout" onclick="doSignOut()">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
@@ -1280,34 +1307,50 @@
 </div>
 
 <!-- ════════════════════════════════════════════════════════
-     BROADCAST SCREEN
+     TAB 3 — MESSAGE
 ════════════════════════════════════════════════════════ -->
-<div id="broadcast-screen">
+<div id="tab-message" class="tab-page">
   <div class="bc-top-bar">
-    <h2>Message</h2>
-    <button class="bc-cancel" onclick="closeBroadcast()">Cancel</button>
+    <div class="top-bar-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+      </svg>
+    </div>
+    <h1>Message</h1>
+    <button id="user-btn-message" class="top-bar-action" onclick="showUserMenu()" style="display:none;padding:0;">
+      <div id="user-avatar-message" class="user-avatar"></div>
+    </button>
   </div>
+
+  <!-- Group filter pills -->
+  <div class="msg-groups-bar" id="msg-groups-bar"></div>
+
+  <!-- Scrollable contact list -->
   <div class="bc-body">
-    <textarea id="bc-textarea" class="bc-textarea" rows="6" placeholder="Type your message…"></textarea>
     <div class="bc-section-header">
-      <span class="bc-section-label">Recipients</span>
+      <span class="bc-section-label" id="bc-group-label">All Recipients</span>
       <button id="bc-select-all-btn" class="bc-select-all" onclick="selectAllBc()">Select All</button>
     </div>
     <div id="bc-contact-list" class="bc-contact-list"></div>
   </div>
-  <div class="bc-footer">
-    <button class="btn btn-primary" style="background:#25D366;border-color:#25D366;flex:1;" onclick="sendBroadcastWa()">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-      WhatsApp
-    </button>
-    <button class="btn btn-outline" style="flex:1;" onclick="sendBroadcastSms()">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
-      SMS
-    </button>
-    <button class="btn btn-outline" style="flex:1;" onclick="sendBroadcastEmail()">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
-      Email
-    </button>
+
+  <!-- Sticky compose footer -->
+  <div class="msg-compose-footer">
+    <textarea id="bc-textarea" class="bc-textarea" rows="3" placeholder="Type your message…"></textarea>
+    <div class="msg-send-btns">
+      <button class="btn btn-primary" style="background:#25D366;border-color:#25D366;flex:1;" onclick="sendBroadcastWa()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        WhatsApp
+      </button>
+      <button class="btn btn-outline" style="flex:1;" onclick="sendBroadcastSms()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
+        SMS
+      </button>
+      <button class="btn btn-outline" style="flex:1;" onclick="sendBroadcastEmail()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+        Email
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1319,6 +1362,12 @@
     <button class="wa-send-close" onclick="closeWaSend()">✕</button>
   </div>
   <div id="wa-send-list" class="wa-send-list"></div>
+  <div class="wa-send-footer">
+    <button class="wa-done-btn" onclick="closeWaSend()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+      Done
+    </button>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════
@@ -1337,6 +1386,12 @@
       <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
     </svg>
     All Contacts
+  </button>
+  <button id="tb-message" class="tab-btn" onclick="switchTab('message')" aria-label="Message">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+    </svg>
+    Message
   </button>
 </nav>
 
@@ -1453,6 +1508,7 @@ function switchTab(tab) {
   document.getElementById('tb-' + tab).classList.add('active');
 
   if (tab === 'contacts') loadContacts();
+  if (tab === 'message')  initMessageTab();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -2312,31 +2368,52 @@ function sendMsg(channel) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   BROADCAST MESSAGE
+   MESSAGE TAB — group filtering + broadcast
 ══════════════════════════════════════════════════════════ */
 const bcSelected = new Set();
+let activeGroup = null; // null = All
 
-async function openBroadcast() {
-  closeUserMenu();
-  bcSelected.clear();
-  document.getElementById('bc-textarea').value = '';
-  document.getElementById('bc-select-all-btn').textContent = 'Select All';
-  document.getElementById('broadcast-screen').classList.add('open');
+async function initMessageTab() {
   if (!allContacts.length) await loadContacts();
-  renderBcContacts();
+  renderMsgGroups();
+  filterMsgGroup(activeGroup);
 }
 
-function closeBroadcast() {
-  document.getElementById('broadcast-screen').classList.remove('open');
+function renderMsgGroups() {
+  const bar = document.getElementById('msg-groups-bar');
+  const groups = [...new Set(allContacts.map(c => c.group).filter(Boolean))].sort();
+  bar.innerHTML = [
+    `<button class="group-pill${activeGroup === null ? ' active' : ''}" onclick="filterMsgGroup(null)">All</button>`,
+    ...groups.map(g => `<button class="group-pill${activeGroup === g ? ' active' : ''}" onclick="filterMsgGroup('${esc(g)}')">${esc(g)}</button>`)
+  ].join('');
 }
 
-function renderBcContacts() {
+function filterMsgGroup(group) {
+  activeGroup = group;
+  // Update pill active states
+  document.querySelectorAll('.group-pill').forEach(p => {
+    const isAll = p.textContent === 'All';
+    p.classList.toggle('active', group === null ? isAll : p.textContent === group);
+  });
+  // Update section label
+  const label = document.getElementById('bc-group-label');
+  if (label) label.textContent = group ? group : 'All Recipients';
+  // Select contacts in this group, deselect others
+  bcSelected.clear();
+  const pool = group ? allContacts.filter(c => c.group === group) : allContacts;
+  pool.forEach(c => bcSelected.add(c.id));
+  document.getElementById('bc-select-all-btn').textContent = 'Deselect All';
+  renderBcContacts(pool);
+}
+
+function renderBcContacts(pool) {
+  const contacts = pool || allContacts;
   const list = document.getElementById('bc-contact-list');
-  if (!allContacts.length) {
-    list.innerHTML = '<div class="bc-empty">No contacts saved yet.</div>';
+  if (!contacts.length) {
+    list.innerHTML = '<div class="bc-empty">No contacts in this group yet.</div>';
     return;
   }
-  list.innerHTML = allContacts.map(c => {
+  list.innerHTML = contacts.map(c => {
     const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Unknown';
     const sub  = c.phone || c.email || '';
     const color = AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
@@ -2357,20 +2434,22 @@ function renderBcContacts() {
 function toggleBcContact(id) {
   if (bcSelected.has(id)) bcSelected.delete(id);
   else bcSelected.add(id);
-  renderBcContacts();
+  const pool = activeGroup ? allContacts.filter(c => c.group === activeGroup) : allContacts;
+  renderBcContacts(pool);
   document.getElementById('bc-select-all-btn').textContent =
-    bcSelected.size === allContacts.length ? 'Deselect All' : 'Select All';
+    bcSelected.size === pool.length ? 'Deselect All' : 'Select All';
 }
 
 function selectAllBc() {
-  if (bcSelected.size === allContacts.length) {
+  const pool = activeGroup ? allContacts.filter(c => c.group === activeGroup) : allContacts;
+  if (bcSelected.size === pool.length) {
     bcSelected.clear();
     document.getElementById('bc-select-all-btn').textContent = 'Select All';
   } else {
-    allContacts.forEach(c => bcSelected.add(c.id));
+    pool.forEach(c => bcSelected.add(c.id));
     document.getElementById('bc-select-all-btn').textContent = 'Deselect All';
   }
-  renderBcContacts();
+  renderBcContacts(pool);
 }
 
 function sendBroadcastEmail() {
@@ -2392,12 +2471,13 @@ function sendBroadcastWa() {
   document.getElementById('wa-send-list').innerHTML = selected.map(c => {
     const name  = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Unknown';
     const waNum = c.phone.replace(/[^\d]/g, '');
-    return `<a class="wa-send-item" href="https://wa.me/${waNum}?text=${encoded}" target="_blank" rel="noopener">
+    return `<a class="wa-send-item" id="wa-item-${c.id}" href="https://wa.me/${waNum}?text=${encoded}" target="_blank" rel="noopener" onclick="markWaSent('${c.id}')">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#25D366" width="28" height="28" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-      <div>
+      <div style="flex:1">
         <div class="wa-send-name">${esc(name)}</div>
         <div class="wa-send-num">${esc(c.phone)}</div>
       </div>
+      <span id="wa-check-${c.id}" class="wa-sent-check" style="display:none">✓</span>
     </a>`;
   }).join('');
   document.getElementById('wa-send-backdrop').style.display = 'block';
@@ -2411,6 +2491,15 @@ function sendBroadcastSms() {
   if (!selected.length) { alert('No selected contacts have a phone number.'); return; }
   const numbers = selected.map(c => c.phone).join(',');
   window.location.href = `sms:${numbers}?body=${encodeURIComponent(msg)}`;
+}
+
+function markWaSent(id) {
+  setTimeout(() => {
+    const row   = document.getElementById('wa-item-' + id);
+    const check = document.getElementById('wa-check-' + id);
+    if (row)   row.classList.add('wa-sent');
+    if (check) check.style.display = 'inline';
+  }, 400);
 }
 
 function closeWaSend() {
@@ -2431,18 +2520,19 @@ auth.onAuthStateChanged(user => {
     gate.style.display    = 'none';
     signInScr.style.display = 'none';
     const initial = usernameFromUser(user).charAt(0).toUpperCase() || '?';
-    ['scan', 'contacts'].forEach(tab => {
+    ['scan', 'contacts', 'message'].forEach(tab => {
       const btn    = document.getElementById('user-btn-' + tab);
       const avatar = document.getElementById('user-avatar-' + tab);
       if (btn)    btn.style.display  = 'flex';
       if (avatar) avatar.textContent = initial;
     });
     if (currentTab === 'contacts') loadContacts();
+    if (currentTab === 'message')  initMessageTab();
   } else {
     currentUser = null;
     gate.style.display      = 'none';
     signInScr.style.display = 'flex';
-    ['scan', 'contacts'].forEach(tab => {
+    ['scan', 'contacts', 'message'].forEach(tab => {
       const btn = document.getElementById('user-btn-' + tab);
       if (btn) btn.style.display = 'none';
     });
