@@ -622,6 +622,16 @@
     .sheet-close svg { width: 15px; height: 15px; }
     .sheet-close:active { opacity: .6; }
 
+    .sheet-edit {
+      background: var(--fill); border: none; cursor: pointer; padding: 0;
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--blue); flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sheet-edit svg { width: 15px; height: 15px; }
+    .sheet-edit:active { opacity: .6; }
+
     .sheet-rows { padding: 0 18px; }
     .sheet-row {
       display: flex; align-items: flex-start; gap: 12px;
@@ -1174,6 +1184,13 @@
           </div>
         </div>
 
+        <div id="edit-banner" style="display:none; margin-bottom:8px; padding:10px 14px; background:rgba(0,122,255,0.08); border:1.5px solid rgba(0,122,255,0.2); border-radius:10px; align-items:center; justify-content:space-between; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--blue);flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+            <span style="font-size:13px; color:var(--blue); font-weight:600;">Editing: <span id="edit-banner-name"></span></span>
+          </div>
+          <button onclick="cancelEdit()" style="font-size:12px; color:var(--secondary); background:none; border:none; cursor:pointer; padding:2px 8px; border-radius:6px; -webkit-tap-highlight-color:transparent;">Cancel</button>
+        </div>
         <div class="form-actions">
           <div id="form-quick-actions" class="form-quick-actions" style="display:none;"></div>
           <button id="save-btn" class="btn btn-success" onclick="saveContact()">
@@ -1282,6 +1299,9 @@
       <div id="d-name" class="sheet-fullname"></div>
       <div id="d-titco" class="sheet-title-co"></div>
     </div>
+    <button class="sheet-edit" onclick="editContact(window._detailContact)" aria-label="Edit">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+    </button>
     <button class="sheet-close" onclick="closeDetail()" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
@@ -1496,6 +1516,7 @@ let filteredContacts = [];
 let currentTab = 'scan';
 let currentUser = null;
 let isScanningBack = false;
+let _editingContactId = null;
 
 /* ══════════════════════════════════════════════════════════
    TAB NAVIGATION
@@ -1860,43 +1881,71 @@ async function saveContact() {
     hour: '2-digit', minute: '2-digit',
   });
 
-  /* 1. VCF download — synchronous FIRST so iOS doesn't block it */
-  const vcf  = buildVCF(data);
-  const blob = new Blob([vcf], { type: 'text/x-vcard;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = ([data.firstName, data.lastName].filter(Boolean).join('_') || 'contact') + '.vcf';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
+  const successTitle  = document.querySelector('#sv-success .success-title');
+  const successNote   = document.getElementById('success-note');
+  const badges        = document.getElementById('success-badges');
+  const checkSVG      = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
 
-  /* 2. Save to Firestore */
-  if (currentUser) {
-    try {
-      await db.collection('users').doc(currentUser.uid).collection('contacts').add({
-        ...data,
-        dateScanned: now,
-        _ts: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-    } catch (err) {
-      console.error('Firestore save error:', err);
+  if (_editingContactId) {
+    /* ── EDIT MODE: update existing contact ── */
+    if (currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('contacts')
+          .doc(_editingContactId).update({ ...data, _ts: firebase.firestore.FieldValue.serverTimestamp() });
+        const idx = allContacts.findIndex(c => c.id === _editingContactId);
+        if (idx !== -1) allContacts[idx] = { ...allContacts[idx], ...data };
+      } catch (err) {
+        console.error('Firestore update error:', err);
+      }
     }
-  }
+    _editingContactId = null;
+    document.getElementById('save-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg> Save Contact`;
+    document.getElementById('edit-banner').style.display = 'none';
 
-  /* 3. Show success */
-  const badges = document.getElementById('success-badges');
-  badges.innerHTML = '';
-  const b1 = document.createElement('div');
-  b1.className = 'sheets-badge';
-  b1.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Saved to Contacts`;
-  badges.appendChild(b1);
-  const b2 = document.createElement('div');
-  b2.className = 'sheets-badge';
-  b2.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> .vcf downloaded`;
-  badges.appendChild(b2);
+    successTitle.textContent = 'Contact Updated!';
+    successNote.innerHTML    = 'Your changes have been saved.';
+    badges.innerHTML = `<div class="sheets-badge">${checkSVG} Updated in Contacts</div>`;
+  } else {
+    /* ── NEW CONTACT: VCF download + Firestore add ── */
+
+    /* 1. VCF download — synchronous FIRST so iOS doesn't block it */
+    const vcf  = buildVCF(data);
+    const blob = new Blob([vcf], { type: 'text/x-vcard;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = ([data.firstName, data.lastName].filter(Boolean).join('_') || 'contact') + '.vcf';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+
+    /* 2. Save to Firestore */
+    if (currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('contacts').add({
+          ...data,
+          dateScanned: now,
+          _ts: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('Firestore save error:', err);
+      }
+    }
+
+    successTitle.textContent = 'Contact Saved!';
+    successNote.innerHTML    = 'Your <strong>.vcf file has been downloaded</strong>. On iPhone or Android, open the file to add to your Contacts app.';
+    badges.innerHTML = '';
+    const b1 = document.createElement('div');
+    b1.className = 'sheets-badge';
+    b1.innerHTML = `${checkSVG} Saved to Contacts`;
+    badges.appendChild(b1);
+    const b2 = document.createElement('div');
+    b2.className = 'sheets-badge';
+    b2.innerHTML = `${checkSVG} .vcf downloaded`;
+    badges.appendChild(b2);
+  }
 
   scanShow('success');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1930,6 +1979,11 @@ function buildVCF(d) {
 
 /* ── Reset scan tab ── */
 function resetScan() {
+  if (_editingContactId) {
+    _editingContactId = null;
+    document.getElementById('save-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg> Save Contact`;
+    document.getElementById('edit-banner').style.display = 'none';
+  }
   FORM_FIELDS.forEach(f => { const el = document.getElementById('f-' + f); if (el) el.value = ''; });
   document.getElementById('preview-img').src = '';
   const fqa = document.getElementById('form-quick-actions');
@@ -2173,6 +2227,31 @@ function closeDetail() {
   document.getElementById('detail-backdrop').classList.remove('open');
   document.getElementById('detail-sheet').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+function editContact(c) {
+  if (!c) return;
+  closeDetail();
+  switchTab('scan');
+  FORM_FIELDS.forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (el) el.value = c[f] || '';
+  });
+  _editingContactId = c.id;
+  const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Contact';
+  document.getElementById('edit-banner-name').textContent = fullName;
+  document.getElementById('edit-banner').style.display = 'flex';
+  document.getElementById('save-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg> Update Contact`;
+  scanShow('form');
+  document.getElementById('sv-preview').style.display = 'none'; // no card image in edit mode
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  _editingContactId = null;
+  document.getElementById('edit-banner').style.display = 'none';
+  document.getElementById('save-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg> Save Contact`;
+  resetScan();
 }
 
 async function deleteContact(contactId) {
