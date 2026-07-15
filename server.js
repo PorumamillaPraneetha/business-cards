@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -13,20 +13,21 @@ const EMPTY_CONTACT = {
   zip: '', country: '', website: '', notes: '',
 };
 
-// ── Scan card with Gemini ────────────────────────────────────
+// ── Scan card with Groq ────────────────────────────────────
 app.post('/api/scan', async (req, res) => {
   try {
     const { image, mimeType, side, emptyFields } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY is not set in environment.' });
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is not set in .env' });
 
     // If back-side scan but nothing is empty, skip AI call
     if (side === 'back' && (!Array.isArray(emptyFields) || emptyFields.length === 0)) {
       return res.json({ contact: EMPTY_CONTACT });
     }
 
+    const groq       = new Groq({ apiKey });
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
     const mediaType  = mimeType || 'image/jpeg';
     const emptyList  = Array.isArray(emptyFields) && emptyFields.length
@@ -40,7 +41,7 @@ Your job:
 1. Look for these fields that are still missing: ${emptyList}. If found, fill them in.
 2. Collect ALL other text on the back (services, benefits, taglines, GSTIN, social handles, descriptions — anything) into "notes" as a newline-separated list.
 
-Return a JSON object with exactly these fields:
+Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 {"firstName":"","lastName":"","phone":"","phone2":"","email":"","company":"","title":"","address":"","city":"","state":"","zip":"","country":"","website":"","notes":""}
 
 Critical rules:
@@ -54,7 +55,7 @@ Critical rules:
   • Separate different sections with a blank line.`
       : `Extract contact information from this business card image.
 
-Return a JSON object with exactly these fields:
+Return ONLY a raw JSON object — no markdown, no explanation, just the JSON:
 {"firstName":"","lastName":"","phone":"","phone2":"","email":"","company":"","title":"","address":"","city":"","state":"","zip":"","country":"","website":""}
 
 Rules:
@@ -67,29 +68,53 @@ Rules:
 - Include country dialing codes exactly as shown. Copy website exactly as printed.
 - State and ZIP are SEPARATE fields. "AP" goes in state, "531173" goes in zip — never combined.`;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: 'You are a data extraction assistant. Output only valid JSON matching the exact schema requested. No markdown, no explanations.',
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: 'application/json',
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a data extraction assistant. You ONLY output valid JSON. Never add explanations, markdown, or any other text.',
       },
-    });
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64Data}` } },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ];
 
-    const result = await model.generateContent([
-      { inlineData: { mimeType: mediaType, data: base64Data } },
-      prompt,
-    ]);
+    function parseResponse(content) {
+      let raw = (content || '').trim()
+        .replace(/^```(?:json)?\r?\n?/, '')
+        .replace(/\r?\n?```$/, '')
+        .trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) raw = jsonMatch[0];
+      return JSON.parse(raw);
+    }
 
-    const contact = JSON.parse(result.response.text());
+    let contact;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await groq.chat.completions.create({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          max_tokens: 1024,
+          temperature: 0,
+          messages,
+        });
+        contact = parseResponse(response.choices[0].message.content);
+        break;
+      } catch (parseErr) {
+        if (attempt === 1) {
+          console.error('Model returned non-JSON after 2 attempts');
+          if (side === 'back') return res.json({ contact: EMPTY_CONTACT });
+          return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
+        }
+      }
+    }
+
     res.json({ contact });
-
   } catch (err) {
     console.error('Scan error:', err.message);
-    if (err.message?.includes('GEMINI_API_KEY')) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not set in environment.' });
-    }
     res.status(500).json({ error: err.message || 'Failed to scan card.' });
   }
 });
