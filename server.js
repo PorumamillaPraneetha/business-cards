@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const Groq = require('groq-sdk');
+const OpenAI  = require('openai');
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -13,21 +13,24 @@ const EMPTY_CONTACT = {
   zip: '', country: '', website: '', notes: '',
 };
 
-// ── Scan card with Groq ────────────────────────────────────
+// ── Scan card via OpenRouter (Llama 4 Scout free tier) ────────
 app.post('/api/scan', async (req, res) => {
   try {
     const { image, mimeType, side, emptyFields } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is not set in .env' });
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'OPENROUTER_API_KEY is not set in environment.' });
 
-    // If back-side scan but nothing is empty, skip AI call
     if (side === 'back' && (!Array.isArray(emptyFields) || emptyFields.length === 0)) {
       return res.json({ contact: EMPTY_CONTACT });
     }
 
-    const groq       = new Groq({ apiKey });
+    const client = new OpenAI({
+      apiKey,
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
     const mediaType  = mimeType || 'image/jpeg';
     const emptyList  = Array.isArray(emptyFields) && emptyFields.length
@@ -95,8 +98,8 @@ Rules:
     let contact;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const response = await groq.chat.completions.create({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        const response = await client.chat.completions.create({
+          model: 'meta-llama/llama-4-scout:free',
           max_tokens: 1024,
           temperature: 0,
           messages,
