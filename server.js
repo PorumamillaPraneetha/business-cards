@@ -69,7 +69,7 @@ Rules:
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: 'You are a data extraction assistant. Output only valid JSON matching the exact schema requested. No markdown, no explanations.',
       generationConfig: {
         temperature: 0,
