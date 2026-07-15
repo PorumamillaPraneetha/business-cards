@@ -100,7 +100,7 @@ Rules:
       let response;
       try {
         response = await client.chat.completions.create({
-          model: 'meta-llama/llama-4-scout:free',
+          model: 'meta-llama/llama-4-maverick:free',
           max_tokens: 1024,
           temperature: 0,
           messages,
