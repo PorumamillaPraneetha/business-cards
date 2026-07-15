@@ -109,6 +109,7 @@ Rules:
       } catch (parseErr) {
         if (attempt === 1) {
           console.error('Model returned non-JSON after 2 attempts');
+          console.error('Raw content:', response?.choices?.[0]?.message?.content);
           if (side === 'back') return res.json({ contact: EMPTY_CONTACT });
           return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
         }
