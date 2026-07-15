@@ -100,7 +100,7 @@ Rules:
       let response;
       try {
         response = await client.chat.completions.create({
-          model: 'Meta-Llama-4-Scout-17B-16E-Instruct',
+          model: 'Llama-4-Scout-17B-16E-Instruct',
           max_tokens: 1024,
           temperature: 0,
           messages,
