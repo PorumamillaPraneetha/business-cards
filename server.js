@@ -84,6 +84,7 @@ Rules:
 
     function parseResponse(content) {
       let raw = (content || '').trim()
+        .replace(/<think>[\s\S]*?<\/think>/gi, '') // strip Qwen3 thinking blocks
         .replace(/^```(?:json)?\r?\n?/, '')
         .replace(/\r?\n?```$/, '')
         .trim();
