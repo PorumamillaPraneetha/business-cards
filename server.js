@@ -97,8 +97,9 @@ Rules:
 
     let contact;
     for (let attempt = 0; attempt < 2; attempt++) {
+      let response;
       try {
-        const response = await client.chat.completions.create({
+        response = await client.chat.completions.create({
           model: 'meta-llama/llama-4-scout:free',
           max_tokens: 1024,
           temperature: 0,
@@ -107,11 +108,11 @@ Rules:
         contact = parseResponse(response.choices[0].message.content);
         break;
       } catch (parseErr) {
+        console.error('Attempt', attempt, 'error:', parseErr.message);
+        console.error('Raw content:', response?.choices?.[0]?.message?.content);
         if (attempt === 1) {
-          console.error('Model returned non-JSON after 2 attempts');
-          console.error('Raw content:', response?.choices?.[0]?.message?.content);
           if (side === 'back') return res.json({ contact: EMPTY_CONTACT });
-          return res.status(500).json({ error: 'AI returned an unexpected response. Please try again.' });
+          return res.status(500).json({ error: parseErr.message || 'AI returned an unexpected response.' });
         }
       }
     }
