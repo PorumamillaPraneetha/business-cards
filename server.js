@@ -19,8 +19,8 @@ app.post('/api/scan', async (req, res) => {
     const { image, mimeType, side, emptyFields } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'OPENROUTER_API_KEY is not set in environment.' });
+    const apiKey = process.env.SAMBANOVA_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'SAMBANOVA_API_KEY is not set in environment.' });
 
     if (side === 'back' && (!Array.isArray(emptyFields) || emptyFields.length === 0)) {
       return res.json({ contact: EMPTY_CONTACT });
@@ -28,7 +28,7 @@ app.post('/api/scan', async (req, res) => {
 
     const client = new OpenAI({
       apiKey,
-      baseURL: 'https://openrouter.ai/api/v1',
+      baseURL: 'https://api.sambanova.ai/v1',
     });
 
     const base64Data = image.replace(/^data:image\/[a-z+]+;base64,/, '');
@@ -100,7 +100,7 @@ Rules:
       let response;
       try {
         response = await client.chat.completions.create({
-          model: 'meta-llama/llama-4-scout:free',
+          model: 'Meta-Llama-4-Scout-17B-16E-Instruct',
           max_tokens: 1024,
           temperature: 0,
           messages,
